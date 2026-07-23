@@ -96,12 +96,10 @@ export default function Dashboard({ setActiveTab, setSelectedSupplierIdForPO, se
   const cashOut = cashJournal.filter(c => c.tipe === 'keluar').reduce((sum, c) => sum + c.jumlah, 0);
   const netCash = cashIn - cashOut;
 
-  // Active inventory valuation & counts
+  // Active inventory valuation
   const totalStockValue = medicines.reduce((sum, m) => sum + m.stok * m.hargaBeli, 0);
   const potentialRevenue = medicines.reduce((sum, m) => sum + m.stok * m.hargaJual, 0);
   const potentialProfit = potentialRevenue - totalStockValue;
-  const totalStockUnits = medicines.reduce((sum, m) => sum + m.stok, 0);
-  const availableMedsCount = medicines.filter(m => m.stok > 0).length;
 
   // 2. ALERTS FOR LOW STOCK & EXPIRED
   const lowStockMeds = medicines.filter(m => m.stok === 0);
@@ -158,28 +156,7 @@ export default function Dashboard({ setActiveTab, setSelectedSupplierIdForPO, se
       </div>
 
       {/* KPI GRID */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
-        {/* Total Obat Terdaftar */}
-        <div 
-          onClick={() => setActiveTab('master')}
-          className="bg-gradient-to-br from-teal-50/60 via-white to-teal-50/20 p-5 rounded-3xl border border-teal-100/80 shadow-sm flex items-center justify-between transition-all hover:shadow-md hover:-translate-y-0.5 duration-200 cursor-pointer group"
-          title="Klik untuk membuka Data Master Obat"
-        >
-          <div className="space-y-1">
-            <span className="text-[11px] font-bold text-teal-700 uppercase tracking-wider">Total Obat</span>
-            <h3 className="text-2xl font-black font-mono text-slate-950 flex items-baseline gap-1">
-              {medicines.length} <span className="text-xs font-bold text-teal-700 font-sans">Jenis</span>
-            </h3>
-            <div className="inline-flex items-center gap-1 text-[10px] bg-teal-50 text-teal-800 px-2 py-0.5 rounded-lg font-bold">
-              <Package className="w-3 h-3 text-teal-600" />
-              <span>{totalStockUnits.toLocaleString('id-ID')} Pcs Stok</span>
-            </div>
-          </div>
-          <div className="p-3.5 bg-teal-500/10 text-teal-600 rounded-2xl group-hover:bg-teal-500 group-hover:text-white transition-colors shadow-xs">
-            <Pill className="w-5 h-5" />
-          </div>
-        </div>
-
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {/* Penjualan Hari Ini */}
         <div className="bg-gradient-to-br from-emerald-50/60 via-white to-emerald-50/20 p-5 rounded-3xl border border-emerald-100/80 shadow-sm flex items-center justify-between transition-all hover:shadow-md hover:-translate-y-0.5 duration-200">
           <div className="space-y-1">
