@@ -338,15 +338,16 @@ export default function BatchImportModal({ isOpen, onClose }: BatchImportModalPr
     ];
 
     const hargaBeliKeys = [
+      'base_price', 'baseprice', 'base_cost', 'basecost', 'harga_modal', 'hargamodal', 'modal',
       'harga_beli', 'hargabeli', 'harga beli', 'h_beli', 'hbeli', 'hb', 'h_b', 'h.beli',
-      'buy_price', 'cost', 'hpp', 'modal', 'harga_modal', 'hargamodal', 'harga_dasar',
-      'hargadasar', 'harga_pokok', 'h_pokok', 'harga_hpp', 'pembelian', 'h_netto', 'harga_neto', 'hnetto'
+      'buy_price', 'cost', 'hpp', 'harga_dasar', 'hargadasar', 'harga_pokok', 'h_pokok', 
+      'harga_hpp', 'pembelian', 'h_netto', 'harga_neto', 'hnetto'
     ];
 
     const hargaJualKeys = [
-      'harga_jual', 'hargajual', 'harga jual', 'h_jual', 'hjual', 'hj', 'h_j', 'h.jual',
-      'sell_price', 'het', 'hja', 'harga_het', 'harga_umum', 'harga_resep',
-      'h_umum', 'humum', 'tarif', 'penjualan', 'hj_umum', 'hj_resep'
+      'selling_price', 'sellingprice', 'sell_price', 'sellprice', 'harga_jual', 'hargajual', 'harga jual', 
+      'h_jual', 'hjual', 'hj', 'h_j', 'h.jual', 'het', 'hja', 'harga_het', 'harga_umum', 
+      'harga_resep', 'h_umum', 'humum', 'tarif', 'penjualan', 'hj_umum', 'hj_resep'
     ];
 
     const stokKeys = [
