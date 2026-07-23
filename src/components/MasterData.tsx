@@ -229,7 +229,7 @@ export default function MasterData() {
                 <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
                 <span>Import Batch Data Obat</span>
                 <span className="bg-emerald-500/20 text-emerald-300 text-[10px] px-2 py-0.5 rounded-md font-extrabold tracking-wider uppercase border border-emerald-500/30 hidden sm:inline">
-                  Khusus Mohammad Khadafi
+                  Khusus Super Admin
                 </span>
               </button>
             )}

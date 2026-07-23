@@ -54,9 +54,9 @@ export default function BatchImportModal({ isOpen, onClose }: BatchImportModalPr
 
   if (!isOpen) return null;
 
-  // Check if current user is Mohammad Khadafi
+  // Check if current user is Super Admin or Admin
   const userNameLower = (loggedInUser?.name || '').toLowerCase().trim();
-  const isKhadafi = userNameLower.includes('khadafi') || userNameLower.includes('mohammad khadafi');
+  const isKhadafi = userNameLower.includes('khadafi') || userNameLower.includes('super admin') || userNameLower.includes('admin') || loggedInUser?.role === 'admin';
 
   // Helper to normalize and sanitize numbers (e.g. "Rp 15.000", "15.000,00", "15,000", "15000.00")
   const parseNum = (val: any, defaultVal = 0): number => {
@@ -658,12 +658,12 @@ export default function BatchImportModal({ isOpen, onClose }: BatchImportModalPr
               <div className="space-y-1">
                 <h3 className="text-base font-bold text-rose-900">Akses Dibatasi Sistem</h3>
                 <p className="text-xs text-rose-700 max-w-lg mx-auto leading-relaxed">
-                  Fitur impor batch ribuan data obat dikunci hanya untuk <strong>Mohammad Khadafi</strong> (Administrator Utama).
+                  Fitur impor batch ribuan data obat dikunci hanya untuk <strong>Super Admin</strong> (Administrator Utama).
                   Anda saat ini login sebagai <strong>{loggedInUser?.name || 'User Lain'}</strong>.
                 </p>
               </div>
               <div className="bg-white rounded-xl p-3 border border-rose-100 text-xs text-slate-600 max-w-md mx-auto">
-                Silakan ganti login ke akun <strong>Mohammad Khadafi</strong> di menu Akun/Logout jika Anda ingin melakukan impor data gelondongan.
+                Silakan ganti login ke akun <strong>Super Admin</strong> di menu Akun/Logout jika Anda ingin melakukan impor data gelondongan.
               </div>
               <button
                 onClick={onClose}
@@ -686,7 +686,7 @@ export default function BatchImportModal({ isOpen, onClose }: BatchImportModalPr
                       <CheckCircle2 className="w-4 h-4 text-emerald-600 inline" />
                     </div>
                     <p className="text-[11px] text-emerald-700">
-                      Anda login sebagai <strong>Mohammad Khadafi</strong>. Wewenang impor batch data obat diizinkan.
+                      Anda login sebagai <strong>{loggedInUser?.name || 'Super Admin'}</strong>. Wewenang impor batch data obat diizinkan.
                     </p>
                   </div>
                 </div>
@@ -717,7 +717,7 @@ export default function BatchImportModal({ isOpen, onClose }: BatchImportModalPr
                   <div className="space-y-1 flex-1">
                     <h4 className="text-sm font-bold text-emerald-900">Impor Batch Berhasil Diselesaikan!</h4>
                     <p className="text-xs text-emerald-700 leading-relaxed">
-                      Sebanyak <strong>{importedCount.toLocaleString('id-ID')} data obat</strong> telah berhasil ditambahkan oleh Mohammad Khadafi ke database apotek dan kartu stok secara otomatis.
+                      Sebanyak <strong>{importedCount.toLocaleString('id-ID')} data obat</strong> telah berhasil ditambahkan ke database apotek dan kartu stok secara otomatis.
                     </p>
                     <div className="pt-2">
                       <button
