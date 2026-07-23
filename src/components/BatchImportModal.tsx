@@ -154,9 +154,13 @@ export default function BatchImportModal({ isOpen, onClose }: BatchImportModalPr
     const findVal = (possibleKeys: string[]) => {
       const key = keys.find(k => {
         const cleanK = k.toLowerCase().replace(/[^a-z0-9]/g, '');
+        if (!cleanK) return false;
         return possibleKeys.some(pk => {
           const cleanPk = pk.replace(/[^a-z0-9]/g, '');
-          return cleanK === cleanPk || cleanK.includes(cleanPk);
+          if (cleanK === cleanPk) return true;
+          if (cleanK.includes(cleanPk)) return true;
+          if (cleanK.length >= 3 && cleanPk.includes(cleanK)) return true;
+          return false;
         });
       });
       return key !== undefined ? row[key] : undefined;
@@ -165,32 +169,73 @@ export default function BatchImportModal({ isOpen, onClose }: BatchImportModalPr
     const namaKeys = [
       'nama', 'nama_obat', 'namaobat', 'nama_barang', 'namabarang', 'nama_brg', 'namabrg', 
       'nama_produk', 'namaproduk', 'nama_item', 'namaitem', 'deskripsi', 'description', 
-      'name', 'medicine', 'item', 'barang', 'produk', 'obat', 'merk', 'product', 'title'
+      'name', 'medicine', 'item', 'barang', 'produk', 'obat', 'merk', 'product', 'title',
+      'uraian', 'uraian_barang', 'keterangan', 'artikel', 'rincian', 'sediaan', 'alkes',
+      'nama_medis', 'drug', 'merek', 'brand', 'persediaan', 'nm_brg', 'nm_obat', 'nama_dagang',
+      'nama_generik', 'sediaan_obat', 'obat_alkes', 'produk_obat', 'item_obat', 'nama_sediaan'
     ];
-    const kategoriKeys = ['kategori', 'category', 'golongan', 'jenis', 'kelompok', 'tipe', 'group'];
-    const satuanKeys = ['satuan', 'unit', 'kemasan', 'sediaan', 'uom', 'pack', 'bentuk'];
+
+    const kategoriKeys = [
+      'kategori', 'category', 'golongan', 'jenis', 'kelompok', 'tipe', 'group', 'class',
+      'sub_kategori', 'subkategori', 'kat', 'klasifikasi'
+    ];
+
+    const satuanKeys = [
+      'satuan', 'unit', 'kemasan', 'sediaan', 'uom', 'pack', 'bentuk', 'satuan_terkecil',
+      'satuan_jual', 'satuan_beli', 'kemasan_stok'
+    ];
+
     const hargaBeliKeys = [
       'harga_beli', 'hargabeli', 'harga beli', 'buy_price', 'cost', 'h_beli', 'hbeli', 
-      'hpp', 'modal', 'harga_modal', 'hargamodal', 'harga_dasar', 'hargadasar', 'beli'
+      'hpp', 'modal', 'harga_modal', 'hargamodal', 'harga_dasar', 'hargadasar', 'beli',
+      'h_netto', 'harga_neto', 'hnetto', 'harga_pokok', 'h_pokok', 'harga_hpp'
     ];
+
     const hargaJualKeys = [
       'harga_jual', 'hargajual', 'harga jual', 'sell_price', 'price', 'h_jual', 'hjual', 
-      'harga', 'het', 'hja', 'harga_neto', 'harga_het', 'jual'
+      'harga', 'het', 'hja', 'harga_neto', 'harga_het', 'jual', 'harga_umum', 'harga_resep',
+      'h_umum', 'humum', 'tarif', 'harga_satuan', 'harga_pcs'
     ];
+
     const stokKeys = [
       'stok', 'stock', 'jumlah', 'qty', 'quantity', 'sisa', 'stok_akhir', 'stokakhir', 
-      'sisa_stok', 'sisastok', 'saldo', 'stok_fisik', 'fisik', 'stok_tersedia'
+      'sisa_stok', 'sisastok', 'saldo', 'stok_fisik', 'fisik', 'stok_tersedia', 'saldo_stok',
+      'stok_real', 'sisa_akhir'
     ];
-    const batchKeys = ['batch', 'no_batch', 'nobatch', 'no batch', 'nobot', 'lot', 'no_lot', 'nolot', 'batch_no'];
+
+    const batchKeys = [
+      'batch', 'no_batch', 'nobatch', 'no batch', 'nobot', 'lot', 'no_lot', 'nolot',
+      'batch_no', 'no_batch_lot', 'kode_batch'
+    ];
+
     const expiredKeys = [
       'expired_date', 'expireddate', 'expired date', 'ed', 'exp', 'kadaluarsa', 'tgl_exp', 
-      'tgl_ed', 'tanggal_exp', 'tanggal_ed', 'exp_date', 'expiration', 'expired'
+      'tgl_ed', 'tanggal_exp', 'tanggal_ed', 'exp_date', 'expiration', 'expired', 'tgl_kadaluarsa',
+      'kadaluwarsa', 'ed_date'
     ];
-    const rakKeys = ['lokasi_rak', 'lokasirak', 'lokasi rak', 'rak', 'location', 'posisi', 'tempat', 'lokasi'];
-    const stokMinKeys = ['stok_min', 'stokmin', 'stok min', 'min_stok', 'minstok', 'minimal', 'limit', 'min'];
 
-    const nama = findVal(namaKeys) || '';
-    if (!nama || String(nama).trim() === '' || String(nama).trim().toLowerCase() === 'nama obat') return null;
+    const rakKeys = [
+      'lokasi_rak', 'lokasirak', 'lokasi rak', 'rak', 'location', 'posisi', 'tempat', 'lokasi',
+      'kode_rak', 'rak_obat', 'penyimpanan'
+    ];
+
+    const stokMinKeys = [
+      'stok_min', 'stokmin', 'stok min', 'min_stok', 'minstok', 'minimal', 'limit', 'min',
+      'stok_minimal', 'min_stock'
+    ];
+
+    const namaRaw = findVal(namaKeys);
+    if (!namaRaw) return null;
+    const nama = String(namaRaw).trim();
+    if (!nama || nama.length < 2) return null;
+
+    const namaLower = nama.toLowerCase();
+    const invalidHeaderNames = [
+      'nama obat', 'nama barang', 'nama produk', 'nama item', 'nama', 'description', 
+      'deskripsi', 'uraian', 'kode obat', 'nama_obat', 'nama_barang', 'nama_item',
+      'no', 'kode', 'uraian barang', 'item name', 'product name'
+    ];
+    if (invalidHeaderNames.includes(namaLower)) return null;
 
     const kategori = findVal(kategoriKeys) || 'Umum';
     const satuan = findVal(satuanKeys) || 'Tablet';
@@ -203,7 +248,7 @@ export default function BatchImportModal({ isOpen, onClose }: BatchImportModalPr
     const stokMin = parseNum(findVal(stokMinKeys), 10);
 
     return {
-      nama: String(nama).trim(),
+      nama,
       kategori: String(kategori).trim(),
       satuan: String(satuan).trim(),
       hargaBeli,
@@ -216,30 +261,42 @@ export default function BatchImportModal({ isOpen, onClose }: BatchImportModalPr
     };
   };
 
-  // Fallback for rows without header
+  // Fallback for rows without standard headers
   const mapRowWithoutHeader = (rowArr: any[]): Omit<Medicine, 'id'> | null => {
     if (!Array.isArray(rowArr) || rowArr.length === 0) return null;
     const stringCells = rowArr.map(c => String(c || '').trim()).filter(Boolean);
     if (stringCells.length === 0) return null;
 
+    const ignoreWords = [
+      'no', 'kode', 'nama', 'nama obat', 'nama barang', 'kategori', 'satuan', 'harga', 
+      'harga beli', 'harga jual', 'stok', 'batch', 'expired', 'ed', 'rak', 'total', 
+      'subtotal', 'grand total', 'halaman', 'apotek', 'laporan', 'daftar'
+    ];
+
     const candidateNames = stringCells.filter(s => {
+      const lower = s.toLowerCase();
       if (/^\d+$/.test(s)) return false;
       if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
       if (/^\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{4}$/.test(s)) return false;
-      if (s.toLowerCase().startsWith('rak')) return false;
-      if (['tablet', 'kaplet', 'sirup', 'botol', 'ampul', 'vial', 'tube', 'pcs', 'box'].includes(s.toLowerCase())) return false;
+      if (lower.startsWith('rak ')) return false;
+      if (ignoreWords.includes(lower)) return false;
+      if (['tablet', 'kaplet', 'sirup', 'botol', 'ampul', 'vial', 'tube', 'pcs', 'box', 'sachet'].includes(lower)) return false;
       return s.length >= 2;
     });
 
     if (candidateNames.length === 0) return null;
     const nama = candidateNames[0];
 
+    // Find numbers in the row
     const numbers: number[] = [];
     rowArr.forEach(c => {
       if (typeof c === 'number' && !isNaN(c)) numbers.push(c);
-      else if (typeof c === 'string' && /^\d+[\d.,]*$/.test(c.trim())) {
-        const parsed = parseNum(c, -1);
-        if (parsed >= 0) numbers.push(parsed);
+      else if (typeof c === 'string') {
+        const str = c.trim();
+        if (/^[\d.,Rp\s-]+$/.test(str)) {
+          const parsed = parseNum(str, -1);
+          if (parsed >= 0) numbers.push(parsed);
+        }
       }
     });
 
@@ -247,23 +304,38 @@ export default function BatchImportModal({ isOpen, onClose }: BatchImportModalPr
     let hargaJual = 0;
     let stok = 0;
 
-    if (numbers.length >= 3) {
-      hargaBeli = numbers[0];
-      hargaJual = numbers[1];
-      stok = numbers[2];
-    } else if (numbers.length === 2) {
-      hargaBeli = numbers[0];
-      hargaJual = numbers[1];
-    } else if (numbers.length === 1) {
-      stok = numbers[0];
+    // Filter out potential index/row number if the first number is small and appears before name
+    const nameIndexInRow = rowArr.findIndex(c => String(c || '').trim() === nama);
+    const validNumbers = numbers.filter((n, idx) => {
+      if (idx === 0 && nameIndexInRow > 0 && n <= 1000) return false; // Row index number like No. 1, 2, 3
+      return true;
+    });
+
+    const prices = validNumbers.filter(n => n > 200);
+    const stocks = validNumbers.filter(n => n <= 20000);
+
+    if (prices.length >= 2) {
+      hargaBeli = Math.min(prices[0], prices[1]);
+      hargaJual = Math.max(prices[0], prices[1]);
+    } else if (prices.length === 1) {
+      hargaBeli = prices[0];
+      hargaJual = Math.round(prices[0] * 1.2);
     }
+
+    if (stocks.length > 0) {
+      stok = stocks[stocks.length - 1]; // usually stock is near the right side
+    }
+
+    // Detect unit if any
+    const units = ['Tablet', 'Kaplet', 'Sirup', 'Botol', 'Ampul', 'Vial', 'Tube', 'Pcs', 'Box', 'Sachet', 'Strip', 'Kapsul', 'Kotak'];
+    const detectedUnit = stringCells.find(s => units.some(u => u.toLowerCase() === s.toLowerCase())) || 'Tablet';
 
     return {
       nama,
       kategori: 'Umum',
-      satuan: 'Tablet',
+      satuan: detectedUnit,
       hargaBeli,
-      hargaJual: hargaJual > 0 ? hargaJual : Math.round(hargaBeli * 1.2),
+      hargaJual,
       stok,
       batch: `BATCH-${Math.random().toString(36).substring(2, 7).toUpperCase()}`,
       expiredDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
@@ -272,21 +344,34 @@ export default function BatchImportModal({ isOpen, onClose }: BatchImportModalPr
     };
   };
 
-  // Robust Sheet Parser
+  // Robust Sheet Parser with multi-pass strategy
   const parseSheetToMedicines = (worksheet: XLSX.WorkSheet): Omit<Medicine, 'id'>[] => {
-    const matrix: any[][] = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' });
+    // Pass 1: Direct object mapping
+    try {
+      const rawObjects: Record<string, any>[] = XLSX.utils.sheet_to_json(worksheet, { defval: '', raw: false });
+      if (rawObjects && rawObjects.length > 0) {
+        const parsed = rawObjects.map(mapRowToMedicine).filter(Boolean) as Omit<Medicine, 'id'>[];
+        if (parsed.length > 0) return parsed;
+      }
+    } catch {
+      // continue to Pass 2
+    }
+
+    // Pass 2: Header Auto-Detection in 2D Matrix
+    const matrix: any[][] = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '', raw: false });
     if (!matrix || matrix.length === 0) return [];
 
     const headerKeywords = [
       'nama', 'obat', 'barang', 'produk', 'item', 'deskripsi', 'kategori', 'golongan',
       'satuan', 'kemasan', 'harga', 'beli', 'jual', 'stok', 'qty', 'jumlah', 'batch',
-      'expired', 'kadaluarsa', 'ed', 'exp', 'rak', 'lokasi', 'kode', 'uom', 'cost', 'price'
+      'expired', 'kadaluarsa', 'ed', 'exp', 'rak', 'lokasi', 'kode', 'uom', 'cost', 'price',
+      'uraian', 'merek', 'brand', 'hpp', 'modal', 'sisa'
     ];
 
     let bestHeaderRowIdx = -1;
     let maxMatchScore = 0;
 
-    const scanLimit = Math.min(20, matrix.length);
+    const scanLimit = Math.min(30, matrix.length);
     for (let r = 0; r < scanLimit; r++) {
       const row = matrix[r];
       if (!Array.isArray(row)) continue;
@@ -306,13 +391,11 @@ export default function BatchImportModal({ isOpen, onClose }: BatchImportModalPr
       }
     }
 
-    let rawRows: Record<string, any>[] = [];
-
     if (bestHeaderRowIdx >= 0 && maxMatchScore >= 1) {
       const headerRow = matrix[bestHeaderRowIdx].map(cell => String(cell || '').trim());
       const dataRows = matrix.slice(bestHeaderRowIdx + 1);
 
-      rawRows = dataRows.map(rowArray => {
+      const rawRows = dataRows.map(rowArray => {
         const rowObj: Record<string, any> = {};
         headerRow.forEach((hName, colIdx) => {
           if (hName) {
@@ -323,26 +406,22 @@ export default function BatchImportModal({ isOpen, onClose }: BatchImportModalPr
         });
         return rowObj;
       });
-    } else {
-      rawRows = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+
+      const normalized = rawRows.map(mapRowToMedicine).filter(Boolean) as Omit<Medicine, 'id'>[];
+      if (normalized.length > 0) return normalized;
     }
 
-    let normalized = rawRows.map(row => mapRowToMedicine(row)).filter(Boolean) as Omit<Medicine, 'id'>[];
-
-    if (normalized.length === 0 && matrix.length > 0) {
-      const fallbackList: Omit<Medicine, 'id'>[] = [];
-      matrix.forEach(rowArr => {
-        const smartMed = mapRowWithoutHeader(rowArr);
-        if (smartMed) {
-          fallbackList.push(smartMed);
-        }
-      });
-      if (fallbackList.length > 0) {
-        normalized = fallbackList;
+    // Pass 3: Fallback Row-by-Row Deep Scan
+    const fallbackList: Omit<Medicine, 'id'>[] = [];
+    matrix.forEach(rowArr => {
+      if (!Array.isArray(rowArr)) return;
+      const smartMed = mapRowWithoutHeader(rowArr);
+      if (smartMed) {
+        fallbackList.push(smartMed);
       }
-    }
+    });
 
-    return normalized;
+    return fallbackList;
   };
 
   // Handle File Upload Change
