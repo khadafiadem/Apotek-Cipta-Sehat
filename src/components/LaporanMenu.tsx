@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { usePharmacy } from '../PharmacyContext';
 import { Medicine, SalesTransaction, ReceivingGoods } from '../types';
+import * as XLSX from 'xlsx';
 import {
   FileText,
   TrendingUp,
@@ -15,7 +16,8 @@ import {
   ChevronRight,
   Printer,
   X,
-  Plus
+  Plus,
+  FileSpreadsheet
 } from 'lucide-react';
 
 // Jakarta Time utility functions
@@ -242,6 +244,119 @@ export default function LaporanMenu({ setActiveTab, setPOItemsPrepopulate }: Lap
     setActiveTab('purchase');
   };
 
+  // ────────────────────────────────────────────────────────
+  // EXPORT FUNCTIONS TO EXCEL (.XLSX)
+  // ────────────────────────────────────────────────────────
+  const exportSalesToExcel = () => {
+    if (filteredSales.length === 0) {
+      alert('Tidak ada data penjualan untuk diexport.');
+      return;
+    }
+    const excelData = filteredSales.map((tx, idx) => ({
+      'No': idx + 1,
+      'ID Transaksi': tx.id,
+      'Tanggal & Waktu': new Date(tx.tanggal).toLocaleString('id-ID'),
+      'Nama Pelanggan': tx.customerName,
+      'Kasir': tx.kasirName,
+      'Tipe Resep': tx.isResep ? 'Dengan Resep' : 'Bebas',
+      'Cara Bayar': tx.caraBayar.toUpperCase(),
+      'Subtotal (Rp)': tx.subtotal,
+      'Diskon (Rp)': tx.diskon,
+      'Pajak (Rp)': tx.pajak,
+      'Total Akhir (Rp)': tx.total,
+      'Rincian Obat Terjual': tx.items.map(i => `${i.namaObat} (${i.jumlah} unit @ Rp ${i.hargaSatuan.toLocaleString('id-ID')})`).join('; ')
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(excelData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Laporan Penjualan');
+    XLSX.writeFile(workbook, `Laporan_Penjualan_${getJakartaDateISO()}.xlsx`);
+  };
+
+  const exportPurchasesToExcel = () => {
+    if (filteredPurchases.length === 0) {
+      alert('Tidak ada data pembelian untuk diexport.');
+      return;
+    }
+    const excelData = filteredPurchases.map((rg, idx) => ({
+      'No': idx + 1,
+      'ID Penerimaan': rg.id,
+      'ID PO Referensi': rg.poId,
+      'Nama Supplier': rg.supplierNama,
+      'Tanggal Terima': new Date(rg.tanggal).toLocaleString('id-ID'),
+      'Cara Bayar': rg.caraBayar.toUpperCase(),
+      'Jumlah Macam Item': rg.itemsReceived.length,
+      'Total Tagihan (Rp)': rg.total,
+      'Rincian Obat Diterima': rg.itemsReceived.map(i => `${i.namaObat} (${i.jumlahDiterima} unit @ Rp ${i.hargaBeli.toLocaleString('id-ID')})`).join('; ')
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(excelData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Laporan Pembelian');
+    XLSX.writeFile(workbook, `Laporan_Pembelian_${getJakartaDateISO()}.xlsx`);
+  };
+
+  const exportExpiredToExcel = () => {
+    if (filteredExpiredMedicines.length === 0) {
+      alert('Tidak ada data obat kedaluwarsa untuk diexport.');
+      return;
+    }
+    const excelData = filteredExpiredMedicines.map((m, idx) => {
+      const daysDiff = getDaysDiff(m.expiredDate);
+      let status = 'AMAN';
+      if (daysDiff <= 0) status = 'EXPIRED';
+      else if (daysDiff <= 90) status = 'KRITIS';
+
+      return {
+        'No': idx + 1,
+        'ID Obat': m.id,
+        'Nama Obat': m.nama,
+        'Kategori': m.kategori,
+        'No Batch': m.batch,
+        'Tanggal Expired': new Date(m.expiredDate).toLocaleDateString('id-ID'),
+        'Sisa Hari': daysDiff <= 0 ? `Lewat ${Math.abs(daysDiff)} Hari` : `${daysDiff} Hari`,
+        'Status Keamanan': status,
+        'Stok Sisa': m.stok,
+        'Satuan': m.satuan,
+        'Harga Beli (Rp)': m.hargaBeli,
+        'Potensi Kerugian (Rp)': m.stok * m.hargaBeli
+      };
+    });
+
+    const worksheet = XLSX.utils.json_to_sheet(excelData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Laporan Obat Expired');
+    XLSX.writeFile(workbook, `Laporan_Obat_Expired_${getJakartaDateISO()}.xlsx`);
+  };
+
+  const exportLowStockToExcel = () => {
+    if (filteredLowStockMedicines.length === 0) {
+      alert('Tidak ada data obat mau habis untuk diexport.');
+      return;
+    }
+    const excelData = filteredLowStockMedicines.map((m, idx) => {
+      const isKosong = m.stok === 0;
+      const defaultReorder = Math.max((m.stokMin * 2) - m.stok, 10);
+      return {
+        'No': idx + 1,
+        'ID Obat': m.id,
+        'Nama Obat': m.nama,
+        'Kategori': m.kategori,
+        'Stok Saat Ini': m.stok,
+        'Satuan': m.satuan,
+        'Minimal Stok': m.stokMin,
+        'Status Stok': isKosong ? 'KOSONG' : 'KRITIS',
+        'Lokasi Rak': m.lokasiRak,
+        'Rekomendasi Reorder': defaultReorder
+      };
+    });
+
+    const worksheet = XLSX.utils.json_to_sheet(excelData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Laporan Stok Kritis');
+    XLSX.writeFile(workbook, `Laporan_Stok_Kritis_${getJakartaDateISO()}.xlsx`);
+  };
+
   return (
     <div className="space-y-6" id="reports-module-root">
       {/* HEADER SECTION */}
@@ -428,8 +543,8 @@ export default function LaporanMenu({ setActiveTab, setPOItemsPrepopulate }: Lap
                 </select>
               </div>
 
-              {/* Export simulation */}
-              <div className="flex items-end">
+              {/* Export simulation & Excel Export */}
+              <div className="flex flex-col justify-end gap-2">
                 <button
                   onClick={() => {
                     const rows = filteredSales.map(tx => `
@@ -467,10 +582,17 @@ export default function LaporanMenu({ setActiveTab, setPOItemsPrepopulate }: Lap
                     </body></html>`;
                     const w = window.open('', '_blank'); w.document.write(html); w.document.close(); w.print();
                   }}
-                  className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 transition-all shadow-xs"
+                  className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs py-2 px-4 rounded-xl flex items-center justify-center gap-2 transition-all shadow-xs"
                 >
                   <Printer className="w-3.5 h-3.5" />
                   <span>Cetak Laporan</span>
+                </button>
+                <button
+                  onClick={exportSalesToExcel}
+                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-2 px-4 rounded-xl flex items-center justify-center gap-2 transition-all shadow-xs cursor-pointer"
+                >
+                  <FileSpreadsheet className="w-3.5 h-3.5" />
+                  <span>Export ke Excel</span>
                 </button>
               </div>
             </div>
@@ -669,8 +791,8 @@ export default function LaporanMenu({ setActiveTab, setPOItemsPrepopulate }: Lap
                 </select>
               </div>
 
-              {/* Export simulation */}
-              <div className="flex items-end">
+              {/* Export simulation & Excel Export */}
+              <div className="flex flex-col justify-end gap-2">
                 <button
                   onClick={() => {
                     const rows = filteredPurchases.map(rg => `
@@ -707,10 +829,17 @@ export default function LaporanMenu({ setActiveTab, setPOItemsPrepopulate }: Lap
                     </body></html>`;
                     const w = window.open('', '_blank'); w.document.write(html); w.document.close(); w.print();
                   }}
-                  className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 transition-all shadow-xs"
+                  className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs py-2 px-4 rounded-xl flex items-center justify-center gap-2 transition-all shadow-xs"
                 >
                   <Printer className="w-3.5 h-3.5" />
                   <span>Cetak Pembelian</span>
+                </button>
+                <button
+                  onClick={exportPurchasesToExcel}
+                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-2 px-4 rounded-xl flex items-center justify-center gap-2 transition-all shadow-xs cursor-pointer"
+                >
+                  <FileSpreadsheet className="w-3.5 h-3.5" />
+                  <span>Export ke Excel</span>
                 </button>
               </div>
             </div>
@@ -908,13 +1037,49 @@ export default function LaporanMenu({ setActiveTab, setPOItemsPrepopulate }: Lap
               </div>
 
               {/* Action */}
-              <div className="flex items-end">
+              <div className="flex flex-col justify-end gap-2">
                 <button
-                  onClick={() => alert('Daftar obat kedaluwarsa berhasil diarsipkan untuk rencana pembuangan/retur.')}
-                  className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 transition-all shadow-xs"
+                  onClick={() => {
+                    const rows = filteredExpiredMedicines.map(m => {
+                      const daysDiff = getDaysDiff(m.expiredDate);
+                      return `
+                      <tr>
+                        <td>${m.id}</td>
+                        <td>${m.nama}</td>
+                        <td>${m.kategori}</td>
+                        <td>${m.batch}</td>
+                        <td>${new Date(m.expiredDate).toLocaleDateString('id-ID')}</td>
+                        <td style="text-align:center">${daysDiff <= 0 ? 'LEWAT ' + Math.abs(daysDiff) + ' HARI' : daysDiff + ' HARI'}</td>
+                        <td style="text-align:right">${m.stok} ${m.satuan}</td>
+                        <td style="text-align:right;font-weight:bold">Rp ${(m.stok * m.hargaBeli).toLocaleString('id-ID')}</td>
+                      </tr>`;
+                    }).join('');
+                    const html = `<!DOCTYPE html><html><head><title>Laporan Obat Expired</title><style>
+                      body{font-family:Arial,sans-serif;padding:20px;font-size:12px}
+                      h1{text-align:center;margin-bottom:4px;font-size:18px}h2{text-align:center;font-size:13px;color:#666;margin-top:0}
+                      table{width:100%;border-collapse:collapse;margin-top:16px}
+                      th,td{border:1px solid #ddd;padding:6px 8px;text-align:left;font-size:11px}
+                      th{background:#f1f5f9;font-weight:bold;text-transform:uppercase;font-size:9px;letter-spacing:0.5px}
+                      @media print{body{padding:10px}}
+                    </style></head><body>
+                      <h1>LAPORAN OBAT KEDALUWARSA & EXPIRED</h1>
+                      <h2>Cipta Sehat Apotek — Total Item: ${filteredExpiredMedicines.length}</h2>
+                      <table><thead><tr><th>ID Obat</th><th>Nama Obat</th><th>Kategori</th><th>No Batch</th><th>Expired Date</th><th style="text-align:center">Sisa Hari</th><th style="text-align:right">Stok Sisa</th><th style="text-align:right">Potensi Rugi</th></tr></thead><tbody>${rows || '<tr><td colspan="8" style="text-align:center">Tidak ada data</td></tr>'}</tbody></table>
+                      <p style="text-align:center;margin-top:24px;color:#999;font-size:9px">Dicetak: ${new Date().toLocaleString('id-ID')}</p>
+                    </body></html>`;
+                    const w = window.open('', '_blank'); w.document.write(html); w.document.close(); w.print();
+                  }}
+                  className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs py-2 px-4 rounded-xl flex items-center justify-center gap-2 transition-all shadow-xs cursor-pointer"
                 >
                   <Printer className="w-3.5 h-3.5" />
                   <span>Cetak Daftar Expired</span>
+                </button>
+                <button
+                  onClick={exportExpiredToExcel}
+                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-2 px-4 rounded-xl flex items-center justify-center gap-2 transition-all shadow-xs cursor-pointer"
+                >
+                  <FileSpreadsheet className="w-3.5 h-3.5" />
+                  <span>Export ke Excel</span>
                 </button>
               </div>
             </div>
@@ -1094,15 +1259,22 @@ export default function LaporanMenu({ setActiveTab, setPOItemsPrepopulate }: Lap
                 </select>
               </div>
 
-              {/* ACTION: PREPOPULATE PO IN BULK */}
-              <div className="flex items-end">
+              {/* ACTION: PREPOPULATE PO IN BULK & EXPORT EXCEL */}
+              <div className="flex flex-col justify-end gap-2">
                 <button
                   onClick={handleBulkReorder}
                   disabled={filteredLowStockMedicines.length === 0}
-                  className="w-full bg-emerald-500 hover:bg-emerald-600 disabled:opacity-55 text-white font-extrabold text-xs py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 transition-all shadow-xs"
+                  className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:opacity-55 text-white font-extrabold text-xs py-2 px-4 rounded-xl flex items-center justify-center gap-2 transition-all shadow-xs cursor-pointer"
                 >
                   <Plus className="w-3.5 h-3.5 text-white" />
                   <span>Draf PO Massal ({filteredLowStockMedicines.length})</span>
+                </button>
+                <button
+                  onClick={exportLowStockToExcel}
+                  className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs py-2 px-4 rounded-xl flex items-center justify-center gap-2 transition-all shadow-xs cursor-pointer"
+                >
+                  <FileSpreadsheet className="w-3.5 h-3.5" />
+                  <span>Export ke Excel</span>
                 </button>
               </div>
             </div>
