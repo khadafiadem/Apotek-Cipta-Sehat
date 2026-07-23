@@ -38,7 +38,7 @@ import {
 } from 'lucide-react';
 
 function MainAppShell() {
-  const { currentRole, setRole, medicines } = usePharmacy();
+  const { currentRole, setRole, medicines, setLoggedInUser: setContextUser } = usePharmacy();
   const [activeTab, setActiveTab] = useState<string>('dashboard');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
@@ -114,12 +114,13 @@ function MainAppShell() {
     loadUsers();
   }, [sessionLoaded, loggedInUser, activeTab]);
 
-  // Sync context role with active logged-in user role
+  // Sync context role and user with active logged-in user
   useEffect(() => {
+    setContextUser(loggedInUser);
     if (loggedInUser && loggedInUser.role !== currentRole) {
       setRole(loggedInUser.role);
     }
-  }, [loggedInUser, currentRole, setRole]);
+  }, [loggedInUser, currentRole, setRole, setContextUser]);
 
   const getDefaultUsers = (): User[] => [
     { id: 'USR-1', name: 'Ahmad Cipta', role: 'admin' as const, email: 'ahmad@ciptasehat.com', password: 'test' },

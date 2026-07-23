@@ -6,6 +6,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import {
   UserRole,
+  User,
   Medicine,
   Supplier,
   Customer,
@@ -50,6 +51,8 @@ import {
 interface PharmacyContextType {
   currentRole: UserRole;
   setRole: (role: UserRole) => void;
+  loggedInUser: User | null;
+  setLoggedInUser: (user: User | null) => void;
   loading: boolean;
   medicines: Medicine[];
   suppliers: Supplier[];
@@ -70,6 +73,10 @@ interface PharmacyContextType {
 
   // Operations
   addMedicine: (med: Omit<Medicine, 'id'>) => void;
+  importMedicinesBatch: (
+    newMedsList: Omit<Medicine, 'id'>[],
+    onProgress?: (current: number, total: number) => void
+  ) => Promise<{ success: boolean; count: number; error?: string }>;
   updateMedicine: (id: string, med: Partial<Medicine>) => void;
   deleteMedicine: (id: string) => void;
 
@@ -262,6 +269,7 @@ const INITIAL_STOCK_CARDS: StockCard[] = [
 
 export const PharmacyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [currentRole, setRoleState] = useState<UserRole>('admin');
+  const [loggedInUser, setLoggedInUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
   const [medicines, setMedicines] = useState<Medicine[]>([]);
@@ -377,6 +385,73 @@ export const PharmacyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     // Persist to Supabase
     medicineService.add(id, med).catch(e => console.error('Failed to save medicine:', e));
     stockCardService.add(newCard).catch(e => console.error('Failed to save stock card:', e));
+  };
+
+  const importMedicinesBatch = async (
+    newMedsList: Omit<Medicine, 'id'>[],
+    onProgress?: (current: number, total: number) => void
+  ): Promise<{ success: boolean; count: number; error?: string }> => {
+    try {
+      const generatedMeds: Medicine[] = [];
+      const generatedCards: StockCard[] = [];
+      const timestamp = new Date().toISOString();
+
+      newMedsList.forEach((med, idx) => {
+        const id = `MED-B${Date.now().toString(36).toUpperCase()}-${idx}`;
+        const newMed: Medicine = {
+          ...med,
+          id,
+          batch: med.batch || `BATCH-${Math.random().toString(36).substring(2, 7).toUpperCase()}`,
+          lokasiRak: med.lokasiRak || 'Rak Umum',
+          expiredDate: med.expiredDate || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+          stokMin: med.stokMin || 10
+        };
+        generatedMeds.push(newMed);
+
+        if (newMed.stok > 0) {
+          generatedCards.push({
+            id: `SC-B${Date.now().toString(36).toUpperCase()}-${idx}`,
+            obatId: id,
+            namaObat: newMed.nama,
+            tanggal: timestamp,
+            tipe: 'masuk',
+            referensiId: 'BATCH_IMPORT',
+            jumlah: newMed.stok,
+            stokAwal: 0,
+            stokAkhir: newMed.stok,
+            keterangan: 'Import batch obat (Mohammad Khadafi)'
+          });
+        }
+      });
+
+      // Update state locally
+      setMedicines(prev => [...prev, ...generatedMeds]);
+      if (generatedCards.length > 0) {
+        setStockCards(prev => [...prev, ...generatedCards]);
+      }
+
+      // Persist to Supabase in chunks of 100
+      const chunkSize = 100;
+      for (let i = 0; i < generatedMeds.length; i += chunkSize) {
+        const chunkMeds = generatedMeds.slice(i, i + chunkSize);
+        await medicineService.upsertMany(chunkMeds);
+        if (onProgress) {
+          onProgress(Math.min(i + chunkSize, generatedMeds.length), generatedMeds.length);
+        }
+      }
+
+      if (generatedCards.length > 0) {
+        for (let i = 0; i < generatedCards.length; i += chunkSize) {
+          const chunkCards = generatedCards.slice(i, i + chunkSize);
+          await stockCardService.addMany(chunkCards);
+        }
+      }
+
+      return { success: true, count: generatedMeds.length };
+    } catch (e) {
+      console.error('Batch import failed:', e);
+      return { success: false, count: 0, error: (e as Error).message };
+    }
   };
 
   const updateMedicine = (id: string, updatedFields: Partial<Medicine>) => {
@@ -898,13 +973,13 @@ export const PharmacyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   return (
     <PharmacyContext.Provider value={{
-      currentRole, setRole, loading,
+      currentRole, setRole, loggedInUser, setLoggedInUser, loading,
       medicines, suppliers, customers, doctors,
       purchaseOrders, receivingGoods, returnPurchases, supplierDebts, debtPayments,
       salesTransactions, salesReturns, customerCredits, creditPayments,
       stockCards, stockOpnames, cashJournal,
 
-      addMedicine, updateMedicine, deleteMedicine,
+      addMedicine, importMedicinesBatch, updateMedicine, deleteMedicine,
       addSupplier, updateSupplier, deleteSupplier,
       addCustomer, updateCustomer, deleteCustomer,
       addDoctor, updateDoctor, deleteDoctor,

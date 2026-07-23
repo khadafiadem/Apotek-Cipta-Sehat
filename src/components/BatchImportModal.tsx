@@ -1,0 +1,667 @@
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+import React, { useState } from 'react';
+import { usePharmacy } from '../PharmacyContext';
+import { Medicine } from '../types';
+import * as XLSX from 'xlsx';
+import {
+  FileSpreadsheet,
+  Upload,
+  Download,
+  AlertTriangle,
+  CheckCircle2,
+  Lock,
+  X,
+  Search,
+  Database,
+  Layers,
+  ArrowRight,
+  ShieldCheck,
+  Clipboard,
+  FileText,
+  Sparkles
+} from 'lucide-react';
+
+interface BatchImportModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+export default function BatchImportModal({ isOpen, onClose }: BatchImportModalProps) {
+  const { loggedInUser, importMedicinesBatch } = usePharmacy();
+
+  const [inputMode, setInputMode] = useState<'file' | 'text'>('file');
+  const [pastedText, setPastedText] = useState('');
+  const [fileName, setFileName] = useState('');
+
+  const [parsedData, setParsedData] = useState<Omit<Medicine, 'id'>[]>([]);
+  const [parseError, setParseError] = useState('');
+  const [isParsing, setIsParsing] = useState(false);
+
+  // Pagination & Search in Preview
+  const [previewSearch, setPreviewSearch] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 10;
+
+  // Import Progress State
+  const [isImporting, setIsImporting] = useState(false);
+  const [progress, setProgress] = useState({ current: 0, total: 0 });
+  const [importSuccess, setImportSuccess] = useState(false);
+  const [importedCount, setImportedCount] = useState(0);
+
+  if (!isOpen) return null;
+
+  // Check if current user is Mohammad Khadafi
+  const userNameLower = (loggedInUser?.name || '').toLowerCase().trim();
+  const isKhadafi = userNameLower.includes('khadafi') || userNameLower.includes('mohammad khadafi');
+
+  // Helper to normalize and sanitize numbers (e.g. "Rp 15.000", "15,000", "15000.00")
+  const parseNum = (val: any, defaultVal = 0): number => {
+    if (val === undefined || val === null || val === '') return defaultVal;
+    if (typeof val === 'number') return isNaN(val) ? defaultVal : val;
+    const str = String(val).replace(/[^0-9.-]/g, '');
+    const num = parseFloat(str);
+    return isNaN(num) ? defaultVal : num;
+  };
+
+  // Helper to normalize date strings (Excel serials, DD/MM/YYYY, YYYY-MM-DD)
+  const parseDateStr = (val: any): string => {
+    if (!val) {
+      return new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    }
+    // Handle Excel Serial Date Number (e.g., 45000)
+    if (typeof val === 'number') {
+      const parsedDate = new Date(Math.round((val - 25569) * 86400 * 1000));
+      if (!isNaN(parsedDate.getTime())) {
+        return parsedDate.toISOString().split('T')[0];
+      }
+    }
+    const str = String(val).trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
+
+    // Handle DD/MM/YYYY or DD-MM-YYYY
+    const dmy = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+    if (dmy) {
+      const day = dmy[1].padStart(2, '0');
+      const month = dmy[2].padStart(2, '0');
+      const year = dmy[3];
+      return `${year}-${month}-${day}`;
+    }
+
+    const d = new Date(str);
+    if (!isNaN(d.getTime())) {
+      return d.toISOString().split('T')[0];
+    }
+
+    return new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+  };
+
+  // Convert raw row keys to normalized Medicine attributes
+  const mapRowToMedicine = (row: Record<string, any>): Omit<Medicine, 'id'> | null => {
+    const keys = Object.keys(row);
+    if (keys.length === 0) return null;
+
+    const findVal = (possibleKeys: string[]) => {
+      const key = keys.find(k => {
+        const cleanK = k.toLowerCase().replace(/[^a-z0-9]/g, '');
+        return possibleKeys.some(pk => cleanK === pk.replace(/[^a-z0-9]/g, ''));
+      });
+      return key !== undefined ? row[key] : undefined;
+    };
+
+    const nama = findVal(['nama', 'nama_obat', 'namaobat', 'name', 'medicine', 'item']) || '';
+    if (!nama || String(nama).trim() === '') return null;
+
+    const kategori = findVal(['kategori', 'category', 'golongan', 'jenis']) || 'Umum';
+    const satuan = findVal(['satuan', 'unit', 'kemasan']) || 'Tablet';
+    const hargaBeli = parseNum(findVal(['harga_beli', 'hargabeli', 'harga beli', 'buy_price', 'cost']), 0);
+    const hargaJual = parseNum(findVal(['harga_jual', 'hargajual', 'harga jual', 'sell_price', 'price']), 0);
+    const stok = parseNum(findVal(['stok', 'stock', 'jumlah', 'qty', 'quantity']), 0);
+    const batch = String(findVal(['batch', 'no_batch', 'nobatch', 'no batch']) || `BATCH-${Math.random().toString(36).substring(2, 7).toUpperCase()}`);
+    const expiredDate = parseDateStr(findVal(['expired_date', 'expireddate', 'expired date', 'ed', 'exp', 'kadaluarsa']));
+    const lokasiRak = String(findVal(['lokasi_rak', 'lokasirak', 'lokasi rak', 'rak', 'location']) || 'Rak Umum');
+    const stokMin = parseNum(findVal(['stok_min', 'stokmin', 'stok min', 'min_stok']), 10);
+
+    return {
+      nama: String(nama).trim(),
+      kategori: String(kategori).trim(),
+      satuan: String(satuan).trim(),
+      hargaBeli,
+      hargaJual,
+      stok,
+      batch,
+      expiredDate,
+      lokasiRak,
+      stokMin
+    };
+  };
+
+  // Handle File Upload Change
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setFileName(file.name);
+    setParseError('');
+    setIsParsing(true);
+    setImportSuccess(false);
+
+    const reader = new FileReader();
+
+    if (file.name.endsWith('.json')) {
+      reader.onload = (event) => {
+        try {
+          const json = JSON.parse(event.target?.result as string);
+          const list = Array.isArray(json) ? json : (json.medicines || []);
+          const normalized = list.map(mapRowToMedicine).filter(Boolean) as Omit<Medicine, 'id'>[];
+          if (normalized.length === 0) {
+            setParseError('Data JSON tidak berisi objek obat yang valid.');
+          } else {
+            setParsedData(normalized);
+          }
+        } catch (err) {
+          setParseError('Gagal parse file JSON: ' + (err as Error).message);
+        } finally {
+          setIsParsing(false);
+        }
+      };
+      reader.readAsText(file);
+    } else {
+      reader.onload = (event) => {
+        try {
+          const data = new Uint8Array(event.target?.result as ArrayBuffer);
+          const workbook = XLSX.read(data, { type: 'array' });
+          const firstSheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[firstSheetName];
+          const rawRows = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+
+          const normalized = rawRows.map(mapRowToMedicine).filter(Boolean) as Omit<Medicine, 'id'>[];
+          if (normalized.length === 0) {
+            setParseError('Tidak ada baris data obat yang valid ditemukan di worksheet.');
+          } else {
+            setParsedData(normalized);
+          }
+        } catch (err) {
+          setParseError('Gagal membaca spreadsheet: ' + (err as Error).message);
+        } finally {
+          setIsParsing(false);
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    }
+  };
+
+  // Handle Paste Text Parsing
+  const handleParseText = () => {
+    if (!pastedText.trim()) return;
+
+    setIsParsing(true);
+    setParseError('');
+    setImportSuccess(false);
+
+    try {
+      const trimmed = pastedText.trim();
+      if (trimmed.startsWith('[') || trimmed.startsWith('{')) {
+        const json = JSON.parse(trimmed);
+        const list = Array.isArray(json) ? json : (json.medicines || []);
+        const normalized = list.map(mapRowToMedicine).filter(Boolean) as Omit<Medicine, 'id'>[];
+        if (normalized.length === 0) setParseError('JSON tidak valid untuk data obat.');
+        else setParsedData(normalized);
+      } else {
+        // Parse CSV / TSV text via XLSX
+        const workbook = XLSX.read(pastedText, { type: 'string' });
+        const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+        const rawRows = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+        const normalized = rawRows.map(mapRowToMedicine).filter(Boolean) as Omit<Medicine, 'id'>[];
+        if (normalized.length === 0) setParseError('Format teks CSV/TSV tidak menghasilkan data obat.');
+        else setParsedData(normalized);
+      }
+    } catch (err) {
+      setParseError('Gagal memproses data teks: ' + (err as Error).message);
+    } finally {
+      setIsParsing(false);
+    }
+  };
+
+  // Download Sample Template Excel / CSV
+  const downloadTemplate = (format: 'xlsx' | 'csv') => {
+    const sampleRows = [
+      {
+        'Nama Obat': 'Paracetamol 500mg',
+        'Kategori': 'Analgesik',
+        'Satuan': 'Tablet',
+        'Harga Beli': 1500,
+        'Harga Jual': 2500,
+        'Stok': 100,
+        'No Batch': 'BATCH-PCT-01',
+        'Expired Date': '2027-12-31',
+        'Lokasi Rak': 'Rak A-1',
+        'Stok Min': 20
+      },
+      {
+        'Nama Obat': 'Amoxicillin 500mg',
+        'Kategori': 'Antibiotik',
+        'Satuan': 'Kaplet',
+        'Harga Beli': 4000,
+        'Harga Jual': 6500,
+        'Stok': 50,
+        'No Batch': 'BATCH-AMX-02',
+        'Expired Date': '2027-06-30',
+        'Lokasi Rak': 'Rak B-2',
+        'Stok Min': 15
+      },
+      {
+        'Nama Obat': 'Vitamin C 500mg',
+        'Kategori': 'Suplemen',
+        'Satuan': 'Tablet',
+        'Harga Beli': 1000,
+        'Harga Jual': 1800,
+        'Stok': 200,
+        'No Batch': 'BATCH-VTC-03',
+        'Expired Date': '2028-01-15',
+        'Lokasi Rak': 'Rak C-1',
+        'Stok Min': 30
+      }
+    ];
+
+    const worksheet = XLSX.utils.json_to_sheet(sampleRows);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Template Obat');
+
+    if (format === 'xlsx') {
+      XLSX.writeFile(workbook, 'Template_Import_Obat_Apotek_Cipta_Sehat.xlsx');
+    } else {
+      XLSX.writeFile(workbook, 'Template_Import_Obat_Apotek_Cipta_Sehat.csv', { bookType: 'csv' });
+    }
+  };
+
+  // Execute Batch Import
+  const handleStartImport = async () => {
+    if (!isKhadafi || parsedData.length === 0) return;
+
+    setIsImporting(true);
+    setProgress({ current: 0, total: parsedData.length });
+
+    const res = await importMedicinesBatch(parsedData, (current, total) => {
+      setProgress({ current, total });
+    });
+
+    setIsImporting(false);
+
+    if (res.success) {
+      setImportedCount(res.count);
+      setImportSuccess(true);
+      setParsedData([]);
+      setPastedText('');
+      setFileName('');
+    } else {
+      setParseError('Gagal mengimpor data: ' + (res.error || 'Kesalahan database.'));
+    }
+  };
+
+  // Filtered Preview Items
+  const filteredPreview = parsedData.filter(m =>
+    m.nama.toLowerCase().includes(previewSearch.toLowerCase()) ||
+    m.kategori.toLowerCase().includes(previewSearch.toLowerCase()) ||
+    m.batch.toLowerCase().includes(previewSearch.toLowerCase())
+  );
+
+  const totalPages = Math.ceil(filteredPreview.length / pageSize) || 1;
+  const paginatedPreview = filteredPreview.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
+  // Summary statistics
+  const totalStockQty = parsedData.reduce((sum, item) => sum + item.stok, 0);
+  const totalStockValue = parsedData.reduce((sum, item) => sum + item.stok * item.hargaBeli, 0);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto">
+      <div className="bg-white w-full max-w-4xl rounded-3xl shadow-2xl border border-slate-100 overflow-hidden flex flex-col max-h-[90vh]">
+        {/* Header Modal */}
+        <div className="p-6 bg-slate-900 text-white flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-2xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+              <FileSpreadsheet className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="text-lg font-bold">Import Batch Data Obat</h2>
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold tracking-wider uppercase bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                  Akses Khusus
+                </span>
+              </div>
+              <p className="text-xs text-slate-400">
+                Fitur impor data massal ribuan obat dari file Excel, CSV, atau JSON
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Modal Body */}
+        <div className="p-6 overflow-y-auto space-y-6 flex-1">
+          {/* USER SECURITY AUTHORIZATION CARD */}
+          {!isKhadafi ? (
+            <div className="bg-rose-50 border border-rose-200 rounded-2xl p-6 text-center space-y-4">
+              <div className="w-12 h-12 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center mx-auto shadow-sm">
+                <Lock className="w-6 h-6" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-base font-bold text-rose-900">Akses Dibatasi Sistem</h3>
+                <p className="text-xs text-rose-700 max-w-lg mx-auto leading-relaxed">
+                  Fitur impor batch ribuan data obat dikunci hanya untuk <strong>Mohammad Khadafi</strong> (Administrator Utama).
+                  Anda saat ini login sebagai <strong>{loggedInUser?.name || 'User Lain'}</strong>.
+                </p>
+              </div>
+              <div className="bg-white rounded-xl p-3 border border-rose-100 text-xs text-slate-600 max-w-md mx-auto">
+                Silakan ganti login ke akun <strong>Mohammad Khadafi</strong> di menu Akun/Logout jika Anda ingin melakukan impor data gelondongan.
+              </div>
+              <button
+                onClick={onClose}
+                className="bg-slate-800 hover:bg-slate-900 text-white px-5 py-2 rounded-xl text-xs font-bold transition-colors"
+              >
+                Tutup Jendela Ini
+              </button>
+            </div>
+          ) : (
+            <>
+              {/* AUTHORIZED BADGE FOR MOHAMMAD KHADAFI */}
+              <div className="bg-emerald-50/80 border border-emerald-200/60 rounded-2xl p-4 flex items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-xl bg-emerald-500 text-white flex items-center justify-center shrink-0 shadow-xs">
+                    <ShieldCheck className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold text-emerald-900 flex items-center gap-1.5">
+                      <span>Otentikasi Pengguna Terverifikasi</span>
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 inline" />
+                    </div>
+                    <p className="text-[11px] text-emerald-700">
+                      Anda login sebagai <strong>Mohammad Khadafi</strong>. Wewenang impor batch data obat diizinkan.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    onClick={() => downloadTemplate('xlsx')}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-white text-emerald-700 border border-emerald-300 rounded-xl text-xs font-semibold hover:bg-emerald-100/50 transition-colors shadow-2xs"
+                  >
+                    <Download className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>Template .XLSX</span>
+                  </button>
+                  <button
+                    onClick={() => downloadTemplate('csv')}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-white text-slate-700 border border-slate-300 rounded-xl text-xs font-semibold hover:bg-slate-100 transition-colors shadow-2xs"
+                  >
+                    <Download className="w-3.5 h-3.5 text-slate-500" />
+                    <span>Template .CSV</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* SUCCESS STATE DISPLAY */}
+              {importSuccess && (
+                <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-5 flex items-start gap-4">
+                  <div className="w-10 h-10 rounded-2xl bg-emerald-500 text-white flex items-center justify-center shrink-0 shadow-sm">
+                    <Sparkles className="w-5 h-5" />
+                  </div>
+                  <div className="space-y-1 flex-1">
+                    <h4 className="text-sm font-bold text-emerald-900">Impor Batch Berhasil Diselesaikan!</h4>
+                    <p className="text-xs text-emerald-700 leading-relaxed">
+                      Sebanyak <strong>{importedCount.toLocaleString('id-ID')} data obat</strong> telah berhasil ditambahkan oleh Mohammad Khadafi ke database apotek dan kartu stok secara otomatis.
+                    </p>
+                    <div className="pt-2">
+                      <button
+                        onClick={() => setImportSuccess(false)}
+                        className="text-xs font-bold text-emerald-800 underline hover:text-emerald-950"
+                      >
+                        Impor Data Lainnya
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* INPUT MODE SWITCHER & FILE DROPZONE */}
+              {!importSuccess && (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
+                    <button
+                      onClick={() => { setInputMode('file'); setParseError(''); }}
+                      className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${inputMode === 'file' ? 'bg-slate-900 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                    >
+                      <Upload className="w-3.5 h-3.5" />
+                      <span>Upload File Excel / CSV / JSON</span>
+                    </button>
+                    <button
+                      onClick={() => { setInputMode('text'); setParseError(''); }}
+                      className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${inputMode === 'text' ? 'bg-slate-900 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                    >
+                      <Clipboard className="w-3.5 h-3.5" />
+                      <span>Paste Data Teks (Copy Spreadsheet)</span>
+                    </button>
+                  </div>
+
+                  {inputMode === 'file' ? (
+                    <div className="border-2 border-dashed border-slate-200 hover:border-emerald-500 bg-slate-50/50 hover:bg-emerald-50/20 rounded-3xl p-8 text-center transition-all cursor-pointer relative group">
+                      <input
+                        type="file"
+                        accept=".xlsx, .xls, .csv, .json"
+                        onChange={handleFileUpload}
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                      />
+                      <div className="space-y-3 pointer-events-none">
+                        <div className="w-12 h-12 rounded-2xl bg-white border border-slate-200 text-emerald-600 flex items-center justify-center mx-auto shadow-sm group-hover:scale-110 transition-transform">
+                          <FileSpreadsheet className="w-6 h-6" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold text-slate-800">
+                            {fileName ? `File Terpilih: ${fileName}` : 'Klik atau Tarik File Excel / CSV Ke Sini'}
+                          </p>
+                          <p className="text-xs text-slate-400 mt-1">
+                            Mendukung file format .XLSX, .XLS, .CSV, dan .JSON (dapat memuat ribuan baris data)
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-bold text-slate-700">Paste Baris Data spreadsheet (CSV / JSON):</label>
+                        <span className="text-[10px] text-slate-400">Pastikan baris pertama berisi nama kolom/header</span>
+                      </div>
+                      <textarea
+                        rows={6}
+                        value={pastedText}
+                        onChange={(e) => setPastedText(e.target.value)}
+                        placeholder={`Nama Obat\tKategori\tSatuan\tHarga Beli\tHarga Jual\tStok\tBatch\tExpired Date\tRak\nParacetamol 500mg\tAnalgesik\tTablet\t1500\t2500\t100\tBATCH-01\t2027-12-31\tRak A-1\nAmoxicillin 500mg\tAntibiotik\tKaplet\t4000\t6500\t50\tBATCH-02\t2027-06-30\tRak B-2`}
+                        className="w-full p-3 text-xs border border-slate-200 rounded-2xl font-mono focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 bg-slate-50"
+                      />
+                      <button
+                        onClick={handleParseText}
+                        disabled={!pastedText.trim()}
+                        className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white px-4 py-2 rounded-xl text-xs font-bold transition-colors flex items-center gap-2"
+                      >
+                        <FileText className="w-4 h-4" />
+                        <span>Proses Parsing Data Teks</span>
+                      </button>
+                    </div>
+                  )}
+
+                  {isParsing && (
+                    <div className="text-xs font-bold text-emerald-600 animate-pulse flex items-center gap-2 p-3 bg-emerald-50 rounded-xl">
+                      <Database className="w-4 h-4 animate-spin" />
+                      <span>Sedang membaca dan menganalisis struktur data obat...</span>
+                    </div>
+                  )}
+
+                  {parseError && (
+                    <div className="bg-rose-50 border border-rose-200 text-rose-700 p-4 rounded-2xl text-xs flex items-center gap-2">
+                      <AlertTriangle className="w-4 h-4 shrink-0 text-rose-600" />
+                      <span>{parseError}</span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* PREVIEW DASHBOARD & TABLE */}
+              {parsedData.length > 0 && !importSuccess && (
+                <div className="space-y-4 border-t border-slate-100 pt-5">
+                  {/* Summary STATS */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div className="bg-slate-50 border border-slate-100 p-3.5 rounded-2xl">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Item Obat</p>
+                      <p className="text-lg font-black text-slate-900 mt-0.5">{parsedData.length.toLocaleString('id-ID')} Variant</p>
+                    </div>
+                    <div className="bg-emerald-50/50 border border-emerald-100 p-3.5 rounded-2xl">
+                      <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">Total Fisik Stok</p>
+                      <p className="text-lg font-black text-emerald-800 mt-0.5">{totalStockQty.toLocaleString('id-ID')} Pcs</p>
+                    </div>
+                    <div className="bg-indigo-50/50 border border-indigo-100 p-3.5 rounded-2xl">
+                      <p className="text-[10px] font-bold text-indigo-600 uppercase tracking-wider">Total Nilai Beli Stok</p>
+                      <p className="text-lg font-black text-indigo-900 mt-0.5">Rp {totalStockValue.toLocaleString('id-ID')}</p>
+                    </div>
+                  </div>
+
+                  {/* PREVIEW FILTER SEARCH */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <h3 className="text-xs font-extrabold text-slate-800 flex items-center gap-2">
+                      <Layers className="w-4 h-4 text-emerald-600" />
+                      <span>Preview Data Obat yang Siap Diimpor ({filteredPreview.length} Obat)</span>
+                    </h3>
+                    <div className="relative w-full sm:w-64">
+                      <Search className="absolute left-3 top-2.5 w-3.5 h-3.5 text-slate-400" />
+                      <input
+                        type="text"
+                        placeholder="Filter nama, kategori, batch..."
+                        value={previewSearch}
+                        onChange={(e) => { setPreviewSearch(e.target.value); setCurrentPage(1); }}
+                        className="w-full pl-8 pr-3 py-1.5 text-xs border border-slate-200 rounded-xl bg-white focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20"
+                      />
+                    </div>
+                  </div>
+
+                  {/* PREVIEW TABLE */}
+                  <div className="border border-slate-200 rounded-2xl overflow-hidden bg-white shadow-2xs">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-xs border-collapse">
+                        <thead>
+                          <tr className="bg-slate-100/70 border-b border-slate-200 text-slate-600 font-bold text-[10px] uppercase tracking-wider">
+                            <th className="py-2.5 px-3">No</th>
+                            <th className="py-2.5 px-3">Nama Obat</th>
+                            <th className="py-2.5 px-3">Kategori</th>
+                            <th className="py-2.5 px-3">Satuan</th>
+                            <th className="py-2.5 px-3 text-right">Harga Beli</th>
+                            <th className="py-2.5 px-3 text-right">Harga Jual</th>
+                            <th className="py-2.5 px-3 text-center">Stok</th>
+                            <th className="py-2.5 px-3">Batch & Expired</th>
+                            <th className="py-2.5 px-3">Rak</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 text-[11px]">
+                          {paginatedPreview.map((m, idx) => (
+                            <tr key={idx} className="hover:bg-slate-50/80 transition-colors">
+                              <td className="py-2 px-3 text-slate-400 font-mono">{(currentPage - 1) * pageSize + idx + 1}</td>
+                              <td className="py-2 px-3 font-semibold text-slate-900">{m.nama}</td>
+                              <td className="py-2 px-3">
+                                <span className="px-1.5 py-0.5 bg-slate-100 text-slate-700 rounded text-[10px]">{m.kategori}</span>
+                              </td>
+                              <td className="py-2 px-3 text-slate-600">{m.satuan}</td>
+                              <td className="py-2 px-3 text-right font-mono text-slate-600">Rp {m.hargaBeli.toLocaleString('id-ID')}</td>
+                              <td className="py-2 px-3 text-right font-mono font-bold text-slate-900">Rp {m.hargaJual.toLocaleString('id-ID')}</td>
+                              <td className="py-2 px-3 text-center font-mono font-bold text-emerald-700">{m.stok} Pcs</td>
+                              <td className="py-2 px-3 font-mono text-[10px] text-slate-500">
+                                <div>B: {m.batch}</div>
+                                <div className="text-slate-800 font-medium">ED: {m.expiredDate}</div>
+                              </td>
+                              <td className="py-2 px-3 text-slate-600">{m.lokasiRak}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* Table Pagination */}
+                    {totalPages > 1 && (
+                      <div className="p-3 bg-slate-50 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+                        <span>Menampilkan {((currentPage - 1) * pageSize) + 1} - {Math.min(currentPage * pageSize, filteredPreview.length)} dari {filteredPreview.length} obat</span>
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                            disabled={currentPage === 1}
+                            className="px-2.5 py-1 bg-white border border-slate-200 rounded-lg disabled:opacity-40 font-medium hover:bg-slate-100"
+                          >
+                            Prev
+                          </button>
+                          <span className="px-2 font-bold text-slate-700">{currentPage} / {totalPages}</span>
+                          <button
+                            onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                            disabled={currentPage === totalPages}
+                            className="px-2.5 py-1 bg-white border border-slate-200 rounded-lg disabled:opacity-40 font-medium hover:bg-slate-100"
+                          >
+                            Next
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+
+        {/* Footer Modal */}
+        {isKhadafi && parsedData.length > 0 && !importSuccess && (
+          <div className="p-5 bg-slate-50 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shrink-0">
+            <div>
+              {isImporting ? (
+                <div className="space-y-1.5 min-w-[240px]">
+                  <div className="flex items-center justify-between text-xs font-bold text-emerald-800">
+                    <span>Proses Impor Ke Database...</span>
+                    <span>{progress.current} / {progress.total} ({Math.round((progress.current / progress.total) * 100)}%)</span>
+                  </div>
+                  <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-emerald-500 transition-all duration-300"
+                      style={{ width: `${(progress.current / progress.total) * 100}%` }}
+                    />
+                  </div>
+                </div>
+              ) : (
+                <p className="text-xs text-slate-500">
+                  Siap menambahkan <strong>{parsedData.length.toLocaleString('id-ID')} obat</strong> ke database Apotek Cipta Sehat.
+                </p>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={onClose}
+                disabled={isImporting}
+                className="px-4 py-2.5 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition-colors"
+              >
+                Batal
+              </button>
+              <button
+                onClick={handleStartImport}
+                disabled={isImporting}
+                className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white px-6 py-2.5 rounded-xl font-bold text-xs transition-colors shadow-sm"
+              >
+                <ArrowRight className="w-4 h-4" />
+                <span>Mulai Impor {parsedData.length.toLocaleString('id-ID')} Data Obat</span>
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

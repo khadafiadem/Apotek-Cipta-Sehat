@@ -18,8 +18,10 @@ import {
   Info,
   Layers,
   Archive,
-  BookOpen
+  BookOpen,
+  FileSpreadsheet
 } from 'lucide-react';
+import BatchImportModal from './BatchImportModal';
 
 export default function MasterData() {
   const {
@@ -35,6 +37,7 @@ export default function MasterData() {
 
   // Form Modals
   const [showModal, setShowModal] = useState(false);
+  const [showBatchModal, setShowBatchModal] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
 
   // Form Fields - Medicine
@@ -215,13 +218,27 @@ export default function MasterData() {
           </p>
         </div>
         {!isReadOnly && (
-          <button
-            onClick={openAddModal}
-            className="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm transition-colors shadow-sm"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Tambah {activeSubTab === 'obat' ? 'Obat' : activeSubTab === 'supplier' ? 'Supplier' : activeSubTab === 'pelanggan' ? 'Pelanggan' : 'Dokter'}</span>
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            {activeSubTab === 'obat' && (
+              <button
+                onClick={() => setShowBatchModal(true)}
+                className="flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white px-4 py-2.5 rounded-xl font-bold text-sm transition-colors shadow-sm cursor-pointer"
+              >
+                <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
+                <span>Import Batch Data Obat</span>
+                <span className="bg-emerald-500/20 text-emerald-300 text-[10px] px-2 py-0.5 rounded-md font-extrabold tracking-wider uppercase border border-emerald-500/30 hidden sm:inline">
+                  Khusus Mohammad Khadafi
+                </span>
+              </button>
+            )}
+            <button
+              onClick={openAddModal}
+              className="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm transition-colors shadow-sm cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Tambah {activeSubTab === 'obat' ? 'Obat' : activeSubTab === 'supplier' ? 'Supplier' : activeSubTab === 'pelanggan' ? 'Pelanggan' : 'Dokter'}</span>
+            </button>
+          </div>
         )}
       </div>
 
@@ -701,6 +718,11 @@ export default function MasterData() {
           </div>
         </div>
       )}
+      {/* Batch Import Modal for Mohammad Khadafi */}
+      <BatchImportModal
+        isOpen={showBatchModal}
+        onClose={() => setShowBatchModal(false)}
+      />
     </div>
   );
 }
