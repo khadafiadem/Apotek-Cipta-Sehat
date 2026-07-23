@@ -338,15 +338,15 @@ export default function BatchImportModal({ isOpen, onClose }: BatchImportModalPr
     ];
 
     const hargaBeliKeys = [
-      'harga_beli', 'hargabeli', 'harga beli', 'buy_price', 'cost', 'h_beli', 'hbeli', 
-      'hpp', 'modal', 'harga_modal', 'hargamodal', 'harga_dasar', 'hargadasar', 'beli',
-      'h_netto', 'harga_neto', 'hnetto', 'harga_pokok', 'h_pokok', 'harga_hpp'
+      'harga_beli', 'hargabeli', 'harga beli', 'h_beli', 'hbeli', 'hb', 'h_b', 'h.beli',
+      'buy_price', 'cost', 'hpp', 'modal', 'harga_modal', 'hargamodal', 'harga_dasar',
+      'hargadasar', 'harga_pokok', 'h_pokok', 'harga_hpp', 'pembelian', 'h_netto', 'harga_neto', 'hnetto'
     ];
 
     const hargaJualKeys = [
-      'harga_jual', 'hargajual', 'harga jual', 'sell_price', 'price', 'h_jual', 'hjual', 
-      'harga', 'het', 'hja', 'harga_neto', 'harga_het', 'jual', 'harga_umum', 'harga_resep',
-      'h_umum', 'humum', 'tarif', 'harga_satuan', 'harga_pcs'
+      'harga_jual', 'hargajual', 'harga jual', 'h_jual', 'hjual', 'hj', 'h_j', 'h.jual',
+      'sell_price', 'het', 'hja', 'harga_het', 'harga_umum', 'harga_resep',
+      'h_umum', 'humum', 'tarif', 'penjualan', 'hj_umum', 'hj_resep'
     ];
 
     const stokKeys = [
@@ -393,8 +393,29 @@ export default function BatchImportModal({ isOpen, onClose }: BatchImportModalPr
     const rawKategori = findVal(kategoriKeys);
     let kategori = rawKategori ? String(rawKategori).trim() : '';
     const satuan = String(findVal(satuanKeys) || 'Tablet').trim();
-    const hargaBeli = parseNum(findVal(hargaBeliKeys), 0);
-    const hargaJual = parseNum(findVal(hargaJualKeys), 0);
+    
+    let hargaBeli = parseNum(findVal(hargaBeliKeys), 0);
+    let hargaJual = parseNum(findVal(hargaJualKeys), 0);
+
+    // If both prices are zero, check for a generic single price column
+    if (hargaBeli === 0 && hargaJual === 0) {
+      const genericPriceKeys = ['harga', 'price', 'harga_satuan', 'hargasatuan', 'harga_pcs', 'hargapcs', 'tarif', 'nominal'];
+      const singlePrice = parseNum(findVal(genericPriceKeys), 0);
+      if (singlePrice > 0) {
+        hargaBeli = singlePrice;
+        hargaJual = Math.round(singlePrice * 1.25);
+      }
+    } else if (hargaBeli > 0 && hargaJual === 0) {
+      hargaJual = Math.round(hargaBeli * 1.25);
+    } else if (hargaJual > 0 && hargaBeli === 0) {
+      hargaBeli = Math.round(hargaJual / 1.25);
+    } else if (hargaBeli > 0 && hargaJual > 0 && hargaBeli > hargaJual) {
+      // Swapped columns fix (Buy price should be lower than sell price)
+      const temp = hargaBeli;
+      hargaBeli = hargaJual;
+      hargaJual = temp;
+    }
+
     const stok = parseNum(findVal(stokKeys), 0);
     
     // Check if there is a code column like Kode Obat to use as batch if batch is missing
@@ -432,7 +453,7 @@ export default function BatchImportModal({ isOpen, onClose }: BatchImportModalPr
       kategori,
       satuan,
       hargaBeli,
-      hargaJual: hargaJual > 0 ? hargaJual : Math.round(hargaBeli * 1.2),
+      hargaJual,
       stok,
       batch: finalBatch,
       expiredDate,
