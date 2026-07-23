@@ -398,32 +398,46 @@ export default function BatchImportModal({ isOpen, onClose }: BatchImportModalPr
     let hargaBeli = parseNum(findVal(hargaBeliKeys), 0);
     let hargaJual = parseNum(findVal(hargaJualKeys), 0);
 
-    // Direct Column 5 (0-based index 4) = Harga Beli, Column 6 (0-based index 5) = Harga Jual
-    if (keys.length >= 5) {
-      const col5Val = parseNum(row[keys[4]], 0);
-      if (col5Val > 0) {
-        hargaBeli = col5Val;
-      }
-    }
-    if (keys.length >= 6) {
-      const col6Val = parseNum(row[keys[5]], 0);
-      if (col6Val > 0) {
-        hargaJual = col6Val;
+    // Fallbacks if one or both prices are 0
+    if (hargaBeli === 0 || hargaJual === 0) {
+      const genericPriceKeys = ['harga', 'price', 'harga_satuan', 'hargasatuan', 'harga_pcs', 'hargapcs', 'tarif', 'nominal'];
+      const singlePrice = parseNum(findVal(genericPriceKeys), 0);
+
+      // Extract all numeric values > 100 in row excluding stocks/dates/codes
+      const rowNumbers: number[] = [];
+      Object.entries(row).forEach(([k, v]) => {
+        if (isCodeKey(k)) return;
+        const kl = k.toLowerCase();
+        if (kl.includes('stok') || kl.includes('stock') || kl.includes('qty') || kl.includes('jumlah') || kl.includes('min') || kl.includes('rak') || kl.includes('ed') || kl.includes('exp')) return;
+        const parsed = parseNum(v, 0);
+        if (parsed > 100) rowNumbers.push(parsed);
+      });
+
+      if (hargaBeli === 0 && hargaJual === 0) {
+        if (rowNumbers.length >= 2) {
+          hargaBeli = Math.min(rowNumbers[0], rowNumbers[1]);
+          hargaJual = Math.max(rowNumbers[0], rowNumbers[1]);
+        } else if (singlePrice > 0) {
+          hargaBeli = singlePrice;
+          hargaJual = Math.round(singlePrice * 1.25);
+        } else if (rowNumbers.length === 1) {
+          hargaBeli = rowNumbers[0];
+          hargaJual = Math.round(rowNumbers[0] * 1.25);
+        }
+      } else if (hargaBeli > 0 && hargaJual === 0) {
+        const higher = rowNumbers.find(n => n > hargaBeli);
+        hargaJual = higher ? higher : Math.round(hargaBeli * 1.25);
+      } else if (hargaJual > 0 && hargaBeli === 0) {
+        const lower = rowNumbers.find(n => n > 0 && n < hargaJual);
+        hargaBeli = lower ? lower : Math.round(hargaJual / 1.25);
       }
     }
 
-    // Fallbacks if one or both prices are still 0
-    if (hargaBeli === 0 && hargaJual === 0) {
-      const genericPriceKeys = ['harga', 'price', 'harga_satuan', 'hargasatuan', 'harga_pcs', 'hargapcs', 'tarif', 'nominal'];
-      const singlePrice = parseNum(findVal(genericPriceKeys), 0);
-      if (singlePrice > 0) {
-        hargaBeli = singlePrice;
-        hargaJual = Math.round(singlePrice * 1.25);
-      }
-    } else if (hargaBeli > 0 && hargaJual === 0) {
-      hargaJual = Math.round(hargaBeli * 1.25);
-    } else if (hargaJual > 0 && hargaBeli === 0) {
-      hargaBeli = Math.round(hargaJual / 1.25);
+    // Always ensure Harga Beli (modal/cost) <= Harga Jual (sell price)
+    if (hargaBeli > 0 && hargaJual > 0 && hargaBeli > hargaJual) {
+      const temp = hargaBeli;
+      hargaBeli = hargaJual;
+      hargaJual = temp;
     }
 
     const stok = parseNum(findVal(stokKeys), 0);
@@ -542,28 +556,12 @@ export default function BatchImportModal({ isOpen, onClose }: BatchImportModalPr
     const prices = validNumbers.filter(n => n > 200);
     const stocks = validNumbers.filter(n => n <= 20000);
 
-    // Enforce Kolom ke-5 (index 4) = Harga Beli, Kolom ke-6 (index 5) = Harga Jual
-    if (rowArr.length >= 5) {
-      const p5 = parseNum(rowArr[4], 0);
-      if (p5 > 0) hargaBeli = p5;
-    }
-    if (rowArr.length >= 6) {
-      const p6 = parseNum(rowArr[5], 0);
-      if (p6 > 0) hargaJual = p6;
-    }
-
-    if (hargaBeli === 0 && hargaJual === 0) {
-      if (prices.length >= 2) {
-        hargaBeli = prices[0];
-        hargaJual = prices[1];
-      } else if (prices.length === 1) {
-        hargaBeli = prices[0];
-        hargaJual = Math.round(prices[0] * 1.25);
-      }
-    } else if (hargaBeli > 0 && hargaJual === 0) {
-      hargaJual = Math.round(hargaBeli * 1.25);
-    } else if (hargaJual > 0 && hargaBeli === 0) {
-      hargaBeli = Math.round(hargaJual / 1.25);
+    if (prices.length >= 2) {
+      hargaBeli = Math.min(prices[0], prices[1]);
+      hargaJual = Math.max(prices[0], prices[1]);
+    } else if (prices.length === 1) {
+      hargaBeli = prices[0];
+      hargaJual = Math.round(prices[0] * 1.25);
     }
 
     if (stocks.length > 0) {
