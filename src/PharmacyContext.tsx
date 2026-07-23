@@ -79,6 +79,7 @@ interface PharmacyContextType {
   ) => Promise<{ success: boolean; count: number; error?: string }>;
   updateMedicine: (id: string, med: Partial<Medicine>) => void;
   deleteMedicine: (id: string) => void;
+  clearAllMedicines: () => Promise<void>;
 
   addSupplier: (sup: Omit<Supplier, 'id'>) => void;
   updateSupplier: (id: string, sup: Partial<Supplier>) => void;
@@ -479,6 +480,15 @@ export const PharmacyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const deleteMedicine = (id: string) => {
     setMedicines(prev => prev.filter(m => m.id !== id));
     medicineService.delete(id).catch(e => console.error('Failed to delete medicine:', e));
+  };
+
+  const clearAllMedicines = async (): Promise<void> => {
+    setMedicines([]);
+    try {
+      await medicineService.deleteAll();
+    } catch (e) {
+      console.error('Failed to clear medicines:', e);
+    }
   };
 
   // SUPPLIERS CRUD
@@ -979,7 +989,7 @@ export const PharmacyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       salesTransactions, salesReturns, customerCredits, creditPayments,
       stockCards, stockOpnames, cashJournal,
 
-      addMedicine, importMedicinesBatch, updateMedicine, deleteMedicine,
+      addMedicine, importMedicinesBatch, updateMedicine, deleteMedicine, clearAllMedicines,
       addSupplier, updateSupplier, deleteSupplier,
       addCustomer, updateCustomer, deleteCustomer,
       addDoctor, updateDoctor, deleteDoctor,

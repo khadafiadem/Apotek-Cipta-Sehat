@@ -154,8 +154,9 @@ export default function BatchImportModal({ isOpen, onClose }: BatchImportModalPr
     // Helper to identify if a key represents a Product Code / ID column
     const isCodeKey = (k: string) => {
       const lower = k.toLowerCase().replace(/[^a-z0-9]/g, '');
-      if (lower.includes('batch') || lower.includes('rak')) return false;
-      return lower.includes('kode') || lower.includes('kd') || lower.includes('barcode') || lower.includes('sku') || lower.includes('plu') || lower === 'id' || lower === 'code';
+      if (lower.includes('nama') || lower.includes('name') || lower.includes('deskripsi') || lower.includes('description') || lower.includes('uraian')) return false;
+      if (lower.includes('batch') || lower.includes('rak') || lower.includes('kategori') || lower.includes('satuan')) return false;
+      return lower.includes('kode') || lower.includes('kd') || lower.includes('barcode') || lower.includes('sku') || lower.includes('plu') || lower.includes('art') || lower === 'id' || lower === 'code' || lower === 'no' || lower === 'no_obat' || lower === 'no_brg';
     };
 
     const findVal = (possibleKeys: string[], excludeCode = false) => {
@@ -270,20 +271,36 @@ export default function BatchImportModal({ isOpen, onClose }: BatchImportModalPr
     
     // Check if there is a code column like Kode Obat to use as batch if batch is missing
     const codeVal = keys.find(k => isCodeKey(k)) ? row[keys.find(k => isCodeKey(k))!] : undefined;
-    const batch = String(findVal(batchKeys) || codeVal || `BATCH-${Math.random().toString(36).substring(2, 7).toUpperCase()}`);
-    
+    let finalNama = nama;
+    let finalBatch = String(findVal(batchKeys) || codeVal || `BATCH-${Math.random().toString(36).substring(2, 7).toUpperCase()}`);
+
+    // Double Check: If finalNama looks like a short code (e.g. ABB001, K001) without spaces,
+    // and there is a longer string in row that looks like real item name (with spaces or > length), swap them!
+    const isCodeLikePattern = (s: string) => /^[A-Za-z0-9\-\.]{2,10}$/.test(s.trim()) && !s.includes(' ');
+    if (isCodeLikePattern(finalNama)) {
+      const candidates = Object.entries(row)
+        .filter(([k]) => !isCodeKey(k))
+        .map(([, v]) => String(v || '').trim())
+        .filter(v => v.length > finalNama.length && v.includes(' ') && !v.toLowerCase().includes('rak'));
+      
+      if (candidates.length > 0) {
+        finalBatch = finalNama; // The short code becomes batch/code
+        finalNama = candidates[0]; // The longer string becomes real item name
+      }
+    }
+
     const expiredDate = parseDateStr(findVal(expiredKeys));
     const lokasiRak = String(findVal(rakKeys) || 'Rak Umum');
     const stokMin = parseNum(findVal(stokMinKeys), 10);
 
     return {
-      nama,
+      nama: finalNama,
       kategori: String(kategori).trim(),
       satuan: String(satuan).trim(),
       hargaBeli,
       hargaJual: hargaJual > 0 ? hargaJual : Math.round(hargaBeli * 1.2),
       stok,
-      batch,
+      batch: finalBatch,
       expiredDate,
       lokasiRak,
       stokMin

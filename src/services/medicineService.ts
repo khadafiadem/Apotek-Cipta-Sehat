@@ -73,6 +73,11 @@ export const medicineService = {
     if (error) throw error;
   },
 
+  async deleteAll(): Promise<void> {
+    const { error } = await supabase.from(TABLE).delete().neq('id', '');
+    if (error) throw error;
+  },
+
   async upsertMany(medicines: (Medicine & { id: string })[]): Promise<void> {
     const rows = medicines.map(m => ({
       id: m.id,

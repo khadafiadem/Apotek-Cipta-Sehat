@@ -28,7 +28,7 @@ import BatchImportModal from './BatchImportModal';
 export default function MasterData() {
   const {
     currentRole,
-    medicines, addMedicine, updateMedicine, deleteMedicine,
+    medicines, addMedicine, updateMedicine, deleteMedicine, clearAllMedicines,
     suppliers, addSupplier, updateSupplier, deleteSupplier,
     customers, addCustomer, updateCustomer, deleteCustomer,
     doctors, addDoctor, updateDoctor, deleteDoctor
@@ -40,6 +40,8 @@ export default function MasterData() {
   // Form Modals
   const [showModal, setShowModal] = useState(false);
   const [showBatchModal, setShowBatchModal] = useState(false);
+  const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false);
+  const [isDeletingAll, setIsDeletingAll] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
 
   // Form Fields - Medicine
@@ -222,16 +224,28 @@ export default function MasterData() {
         {!isReadOnly && (
           <div className="flex flex-wrap items-center gap-2">
             {activeSubTab === 'obat' && (
-              <button
-                onClick={() => setShowBatchModal(true)}
-                className="flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white px-4 py-2.5 rounded-xl font-bold text-sm transition-colors shadow-sm cursor-pointer"
-              >
-                <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
-                <span>Import Batch Data Obat</span>
-                <span className="bg-emerald-500/20 text-emerald-300 text-[10px] px-2 py-0.5 rounded-md font-extrabold tracking-wider uppercase border border-emerald-500/30 hidden sm:inline">
-                  Khusus Super Admin
-                </span>
-              </button>
+              <>
+                {medicines.length > 0 && (
+                  <button
+                    onClick={() => setShowDeleteAllConfirm(true)}
+                    className="flex items-center gap-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 px-3.5 py-2.5 rounded-xl font-bold text-xs transition-colors shadow-sm cursor-pointer"
+                    title="Hapus seluruh data obat dari database untuk upload ulang"
+                  >
+                    <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+                    <span>Kosongkan Semua Data ({medicines.length})</span>
+                  </button>
+                )}
+                <button
+                  onClick={() => setShowBatchModal(true)}
+                  className="flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white px-4 py-2.5 rounded-xl font-bold text-sm transition-colors shadow-sm cursor-pointer"
+                >
+                  <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
+                  <span>Import Batch Data Obat</span>
+                  <span className="bg-emerald-500/20 text-emerald-300 text-[10px] px-2 py-0.5 rounded-md font-extrabold tracking-wider uppercase border border-emerald-500/30 hidden sm:inline">
+                    Khusus Super Admin
+                  </span>
+                </button>
+              </>
             )}
             <button
               onClick={openAddModal}
@@ -762,11 +776,73 @@ export default function MasterData() {
           </div>
         </div>
       )}
-      {/* Batch Import Modal for Mohammad Khadafi */}
+      {/* Batch Import Modal */}
       <BatchImportModal
         isOpen={showBatchModal}
         onClose={() => setShowBatchModal(false)}
       />
+
+      {/* Delete All Confirmation Modal */}
+      {showDeleteAllConfirm && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fadeIn">
+          <div className="bg-white rounded-3xl max-w-md w-full shadow-2xl overflow-hidden border border-rose-100 p-6 space-y-5">
+            <div className="flex items-center gap-3 text-rose-600">
+              <div className="w-12 h-12 rounded-2xl bg-rose-100 flex items-center justify-center shrink-0">
+                <Trash2 className="w-6 h-6 text-rose-600" />
+              </div>
+              <div>
+                <h3 className="text-lg font-extrabold text-slate-900">Kosongkan Semua Data Obat?</h3>
+                <p className="text-xs text-slate-500">Konfirmasi tindakan bermerek keamanan tinggi</p>
+              </div>
+            </div>
+
+            <div className="bg-rose-50/70 border border-rose-200/80 rounded-2xl p-4 text-xs text-rose-900 leading-relaxed space-y-2">
+              <p>
+                Anda akan menghapus total <strong>{medicines.length.toLocaleString('id-ID')} data obat</strong> secara permanen dari database sistem apotek.
+              </p>
+              <p className="font-semibold text-rose-700">
+                Langkah ini cocok dilakukan sebelum Anda mengunggah ulang (import batch) file Excel data obat yang baru agar tidak terjadi tumpang tindih.
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowDeleteAllConfirm(false)}
+                disabled={isDeletingAll}
+                className="px-4 py-2.5 rounded-xl text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-all cursor-pointer"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                disabled={isDeletingAll}
+                onClick={async () => {
+                  setIsDeletingAll(true);
+                  try {
+                    await clearAllMedicines();
+                    setShowDeleteAllConfirm(false);
+                  } catch (e) {
+                    alert('Gagal menghapus data: ' + (e as Error).message);
+                  } finally {
+                    setIsDeletingAll(false);
+                  }
+                }}
+                className="px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 transition-all shadow-md flex items-center gap-2 cursor-pointer"
+              >
+                {isDeletingAll ? (
+                  <span>Menghapus...</span>
+                ) : (
+                  <>
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Ya, Hapus Semua ({medicines.length})</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
