@@ -147,6 +147,130 @@ export default function BatchImportModal({ isOpen, onClose }: BatchImportModalPr
   };
 
   // Convert raw row keys to normalized Medicine attributes
+  // Smart Auto-Categorization Helper for medicines when category is missing or 'Umum'
+  const predictCategory = (name: string, unit: string): string => {
+    const n = name.toLowerCase();
+    const u = unit.toLowerCase();
+
+    // Alat Kesehatan (Alkes)
+    if (
+      n.includes('alkes') || n.includes('spuit') || n.includes('jarum') || n.includes('kasa') ||
+      n.includes('perban') || n.includes('alkohol') || n.includes('alcohol') || n.includes('handschoen') ||
+      n.includes('glove') || n.includes('masker') || n.includes('infus') || n.includes('underpad') ||
+      n.includes('plester') || n.includes('abocath') || n.includes('catheter') || n.includes('stetoskop') ||
+      n.includes('tensimeter') || n.includes('thermometer') || u.includes('pcs') && (n.includes('kasa') || n.includes('jarum') || n.includes('kapas'))
+    ) {
+      return 'Alat Kesehatan';
+    }
+
+    // Salep / Obat Luar
+    if (
+      n.includes('salep') || n.includes('krim') || n.includes('cream') || n.includes('ointment') ||
+      n.includes('gel') || n.includes('hydrocortisone') || n.includes('bioplacenton') ||
+      n.includes('gentamicin') || n.includes('kalcinol') || n.includes('mupirocin') ||
+      n.includes('ketoconazole') || n.includes('acyclovir') || u.includes('tube') || u.includes('pot')
+    ) {
+      return 'Obat Luar & Salep';
+    }
+
+    // Tetes / Mata / Telinga
+    if (
+      n.includes('tetes') || n.includes('guttae') || n.includes('insto') || n.includes('rohto') ||
+      n.includes('visine') || n.includes('otopain') || n.includes('forumen') || n.includes('tarivid')
+    ) {
+      return 'Obat Tetes (Mata/Telinga)';
+    }
+
+    // Sirup & Suspensi
+    if (
+      n.includes('sirup') || n.includes('syrup') || n.includes('suspensi') || n.includes('drop') ||
+      n.includes('dry syr') || n.includes('syr') || u.includes('botol') || u.includes('fls')
+    ) {
+      return 'Sirup & Tetes';
+    }
+
+    // Injeksi / Ampul / Vial
+    if (
+      n.includes('injeksi') || n.includes('injection') || n.includes('inj') || u.includes('ampul') ||
+      u.includes('vial')
+    ) {
+      return 'Obat Injeksi';
+    }
+
+    // Vitamin & Suplemen
+    if (
+      n.includes('vitamin') || n.includes('vit ') || n.includes('vit.') || n.includes('curcuma') ||
+      n.includes('neurobion') || n.includes('sangobion') || n.includes('calcium') || n.includes('calcifar') ||
+      n.includes('imboost') || n.includes('becom') || n.includes('caviplex') || n.includes('stimuno') ||
+      n.includes('zet') || n.includes('folic') || n.includes('hemobion') || n.includes('ferrous') ||
+      n.includes('multivitamin') || n.includes('suplemen')
+    ) {
+      return 'Vitamin & Suplemen';
+    }
+
+    // Antibiotik
+    if (
+      n.includes('amoxicillin') || n.includes('cefadroxil') || n.includes('ciprofloxacin') ||
+      n.includes('azithromycin') || n.includes('ampicillin') || n.includes('erythromycin') ||
+      n.includes('fg troches') || n.includes('cefspan') || n.includes('thiamphenicol') ||
+      n.includes('cotrimoxazole') || n.includes('cefixime') || n.includes('tetracycline') ||
+      n.includes('clindamycin') || n.includes('doxycycline') || n.includes('metronidazole') ||
+      n.includes('chloramphenicol') || n.includes('antibiotik')
+    ) {
+      return 'Antibiotik';
+    }
+
+    // Analgesik & Antiinflamasi / Anti Nyeri & Demam
+    if (
+      n.includes('paracetamol') || n.includes('ibuprofen') || n.includes('asam mefenamat') ||
+      n.includes('antalgin') || n.includes('pct') || n.includes('mefenamat') || n.includes('meloxicam') ||
+      n.includes('sodium diclofenac') || n.includes('natrium diklofenak') || n.includes('cataflam') ||
+      n.includes('voltaren') || n.includes('dexamethasone') || n.includes('methylprednisolone') ||
+      n.includes('prednisone')
+    ) {
+      return 'Analgesik & Antiinflamasi';
+    }
+
+    // Batuk & Flu
+    if (
+      n.includes('batuk') || n.includes('flu') || n.includes('pilek') || n.includes('obh') ||
+      n.includes('combi') || n.includes('siladex') || n.includes('tremenza') || n.includes('rhinos') ||
+      n.includes('actifed') || n.includes('dextro') || n.includes('ambroxol') || n.includes('gg') ||
+      n.includes('glyceryl') || n.includes('ctm') || n.includes('chlorpheniramine') || n.includes('cetirizine')
+    ) {
+      return 'Batuk & Flu';
+    }
+
+    // Pencernaan & Maag
+    if (
+      n.includes('promag') || n.includes('mylanta') || n.includes('ranitidine') || n.includes('omeprazole') ||
+      n.includes('lansoprazole') || n.includes('antasida') || n.includes('sucralfate') || n.includes('domperidone') ||
+      n.includes('ondansetron') || n.includes('diapet') || n.includes('entrostop') || n.includes('loperamide') ||
+      n.includes('dulcolax') || n.includes('lacto b') || n.includes('oralit')
+    ) {
+      return 'Pencernaan & Maag';
+    }
+
+    // Hipertensi & Jantung
+    if (
+      n.includes('amlodipine') || n.includes('captopril') || n.includes('lisinopril') ||
+      n.includes('valsartan') || n.includes('bisoprolol') || n.includes('furosemide') ||
+      n.includes('spironolactone') || n.includes('nifedipine') || n.includes('candesartan')
+    ) {
+      return 'Jantung & Hipertensi';
+    }
+
+    // Diabetes & Kolesterol
+    if (
+      n.includes('simvastatin') || n.includes('atorvastatin') || n.includes('metformin') ||
+      n.includes('glibenclamide') || n.includes('glimepiride') || n.includes('fenofibrate')
+    ) {
+      return 'Diabetes & Kolesterol';
+    }
+
+    return 'Obat Bebas';
+  };
+
   const mapRowToMedicine = (row: Record<string, any>): Omit<Medicine, 'id'> | null => {
     const keys = Object.keys(row);
     if (keys.length === 0) return null;
@@ -201,8 +325,11 @@ export default function BatchImportModal({ isOpen, onClose }: BatchImportModalPr
     ];
 
     const kategoriKeys = [
-      'kategori', 'category', 'golongan', 'jenis', 'kelompok', 'tipe', 'group', 'class',
-      'sub_kategori', 'subkategori', 'kat', 'klasifikasi'
+      'kategori_obat', 'kategori_barang', 'kategori_produk', 'kategori_item', 'kategori',
+      'category', 'golongan_obat', 'golongan', 'gol', 'jenis_obat', 'jenis_barang', 'jenis',
+      'kelompok_obat', 'kelompok', 'tipe_obat', 'tipe', 'group_item', 'group', 'class',
+      'sub_kategori', 'subkategori', 'sub_golongan', 'subgolongan', 'kat_obat', 'kat',
+      'klasifikasi', 'dept', 'department', 'departemen', 'divisi', 'sektor'
     ];
 
     const satuanKeys = [
@@ -263,8 +390,9 @@ export default function BatchImportModal({ isOpen, onClose }: BatchImportModalPr
     ];
     if (invalidHeaderNames.includes(namaLower)) return null;
 
-    const kategori = findVal(kategoriKeys) || 'Umum';
-    const satuan = findVal(satuanKeys) || 'Tablet';
+    const rawKategori = findVal(kategoriKeys);
+    let kategori = rawKategori ? String(rawKategori).trim() : '';
+    const satuan = String(findVal(satuanKeys) || 'Tablet').trim();
     const hargaBeli = parseNum(findVal(hargaBeliKeys), 0);
     const hargaJual = parseNum(findVal(hargaJualKeys), 0);
     const stok = parseNum(findVal(stokKeys), 0);
@@ -289,14 +417,20 @@ export default function BatchImportModal({ isOpen, onClose }: BatchImportModalPr
       }
     }
 
+    // Smart Auto-Categorization if category is missing or generic (e.g., Umum, Lain-lain)
+    const invalidCategories = ['umum', 'lain-lain', 'lainnya', '-', 'none', 'null', 'undefined', 'general', '0', ''];
+    if (!kategori || invalidCategories.includes(kategori.toLowerCase())) {
+      kategori = predictCategory(finalNama, satuan);
+    }
+
     const expiredDate = parseDateStr(findVal(expiredKeys));
     const lokasiRak = String(findVal(rakKeys) || 'Rak Umum');
     const stokMin = parseNum(findVal(stokMinKeys), 10);
 
     return {
       nama: finalNama,
-      kategori: String(kategori).trim(),
-      satuan: String(satuan).trim(),
+      kategori,
+      satuan,
       hargaBeli,
       hargaJual: hargaJual > 0 ? hargaJual : Math.round(hargaBeli * 1.2),
       stok,
@@ -395,7 +529,7 @@ export default function BatchImportModal({ isOpen, onClose }: BatchImportModalPr
 
     return {
       nama,
-      kategori: 'Umum',
+      kategori: predictCategory(nama, detectedUnit),
       satuan: detectedUnit,
       hargaBeli,
       hargaJual,
