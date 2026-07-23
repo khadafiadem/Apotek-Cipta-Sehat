@@ -151,28 +151,52 @@ export default function BatchImportModal({ isOpen, onClose }: BatchImportModalPr
     const keys = Object.keys(row);
     if (keys.length === 0) return null;
 
-    const findVal = (possibleKeys: string[]) => {
-      const key = keys.find(k => {
-        const cleanK = k.toLowerCase().replace(/[^a-z0-9]/g, '');
-        if (!cleanK) return false;
-        return possibleKeys.some(pk => {
-          const cleanPk = pk.replace(/[^a-z0-9]/g, '');
-          if (cleanK === cleanPk) return true;
-          if (cleanK.includes(cleanPk)) return true;
-          if (cleanK.length >= 3 && cleanPk.includes(cleanK)) return true;
-          return false;
+    // Helper to identify if a key represents a Product Code / ID column
+    const isCodeKey = (k: string) => {
+      const lower = k.toLowerCase().replace(/[^a-z0-9]/g, '');
+      if (lower.includes('batch') || lower.includes('rak')) return false;
+      return lower.includes('kode') || lower.includes('kd') || lower.includes('barcode') || lower.includes('sku') || lower.includes('plu') || lower === 'id' || lower === 'code';
+    };
+
+    const findVal = (possibleKeys: string[], excludeCode = false) => {
+      // Pass 1: Exact match
+      for (const pk of possibleKeys) {
+        const cleanPk = pk.replace(/[^a-z0-9]/g, '');
+        if (!cleanPk) continue;
+        const exactKey = keys.find(k => {
+          if (excludeCode && isCodeKey(k)) return false;
+          const cleanK = k.toLowerCase().replace(/[^a-z0-9]/g, '');
+          return cleanK === cleanPk;
         });
-      });
-      return key !== undefined ? row[key] : undefined;
+        if (exactKey !== undefined && row[exactKey] !== undefined && String(row[exactKey]).trim() !== '') {
+          return row[exactKey];
+        }
+      }
+
+      // Pass 2: Inclusion / Partial match
+      for (const pk of possibleKeys) {
+        const cleanPk = pk.replace(/[^a-z0-9]/g, '');
+        if (!cleanPk || cleanPk.length < 3) continue;
+        const matchKey = keys.find(k => {
+          if (excludeCode && isCodeKey(k)) return false;
+          const cleanK = k.toLowerCase().replace(/[^a-z0-9]/g, '');
+          if (!cleanK) return false;
+          return cleanK.includes(cleanPk) || cleanPk.includes(cleanK);
+        });
+        if (matchKey !== undefined && row[matchKey] !== undefined && String(row[matchKey]).trim() !== '') {
+          return row[matchKey];
+        }
+      }
+
+      return undefined;
     };
 
     const namaKeys = [
-      'nama', 'nama_obat', 'namaobat', 'nama_barang', 'namabarang', 'nama_brg', 'namabrg', 
-      'nama_produk', 'namaproduk', 'nama_item', 'namaitem', 'deskripsi', 'description', 
-      'name', 'medicine', 'item', 'barang', 'produk', 'obat', 'merk', 'product', 'title',
-      'uraian', 'uraian_barang', 'keterangan', 'artikel', 'rincian', 'sediaan', 'alkes',
+      'nama_obat', 'namaobat', 'nama_barang', 'namabarang', 'nama_brg', 'namabrg', 
+      'nama_produk', 'namaproduk', 'nama_item', 'namaitem', 'nama', 'name', 'item_name', 'product_name',
+      'deskripsi', 'description', 'uraian', 'uraian_barang', 'sediaan', 'alkes',
       'nama_medis', 'drug', 'merek', 'brand', 'persediaan', 'nm_brg', 'nm_obat', 'nama_dagang',
-      'nama_generik', 'sediaan_obat', 'obat_alkes', 'produk_obat', 'item_obat', 'nama_sediaan'
+      'nama_generik', 'sediaan_obat', 'obat_alkes', 'produk_obat', 'item_obat', 'nama_sediaan', 'title'
     ];
 
     const kategoriKeys = [
@@ -224,7 +248,8 @@ export default function BatchImportModal({ isOpen, onClose }: BatchImportModalPr
       'stok_minimal', 'min_stock'
     ];
 
-    const namaRaw = findVal(namaKeys);
+    // Exclude product code keys when finding medicine name
+    const namaRaw = findVal(namaKeys, true);
     if (!namaRaw) return null;
     const nama = String(namaRaw).trim();
     if (!nama || nama.length < 2) return null;
@@ -242,7 +267,11 @@ export default function BatchImportModal({ isOpen, onClose }: BatchImportModalPr
     const hargaBeli = parseNum(findVal(hargaBeliKeys), 0);
     const hargaJual = parseNum(findVal(hargaJualKeys), 0);
     const stok = parseNum(findVal(stokKeys), 0);
-    const batch = String(findVal(batchKeys) || `BATCH-${Math.random().toString(36).substring(2, 7).toUpperCase()}`);
+    
+    // Check if there is a code column like Kode Obat to use as batch if batch is missing
+    const codeVal = keys.find(k => isCodeKey(k)) ? row[keys.find(k => isCodeKey(k))!] : undefined;
+    const batch = String(findVal(batchKeys) || codeVal || `BATCH-${Math.random().toString(36).substring(2, 7).toUpperCase()}`);
+    
     const expiredDate = parseDateStr(findVal(expiredKeys));
     const lokasiRak = String(findVal(rakKeys) || 'Rak Umum');
     const stokMin = parseNum(findVal(stokMinKeys), 10);
@@ -285,7 +314,24 @@ export default function BatchImportModal({ isOpen, onClose }: BatchImportModalPr
     });
 
     if (candidateNames.length === 0) return null;
-    const nama = candidateNames[0];
+
+    // Pick real name vs product code (e.g. ABB001 vs AMOXICILLIN 500MG)
+    let nama = candidateNames[0];
+    let candidateCode = '';
+
+    if (candidateNames.length > 1) {
+      // Find candidate that contains spaces or is longer (looks like item title/description)
+      const nameWithSpace = candidateNames.find(s => s.includes(' ') && s.length >= 3);
+      if (nameWithSpace) {
+        nama = nameWithSpace;
+        candidateCode = candidateNames.find(s => s !== nameWithSpace) || '';
+      } else {
+        // Pick the longest string as name
+        const sorted = [...candidateNames].sort((a, b) => b.length - a.length);
+        nama = sorted[0];
+        candidateCode = sorted[1] || '';
+      }
+    }
 
     // Find numbers in the row
     const numbers: number[] = [];
@@ -337,7 +383,7 @@ export default function BatchImportModal({ isOpen, onClose }: BatchImportModalPr
       hargaBeli,
       hargaJual,
       stok,
-      batch: `BATCH-${Math.random().toString(36).substring(2, 7).toUpperCase()}`,
+      batch: candidateCode || `BATCH-${Math.random().toString(36).substring(2, 7).toUpperCase()}`,
       expiredDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
       lokasiRak: 'Rak Umum',
       stokMin: 10
