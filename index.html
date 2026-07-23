@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Apotek Cipta Sehat</title>
+    <style>
+      @media print {
+        #pharmacy-app-shell > aside,
+        #pharmacy-app-shell > header {
+          display: none !important;
+        }
+        #pharmacy-app-shell > main > div > *:not(#sales-view) {
+          display: none !important;
+        }
+        #sales-view > *:not(#receipt-print-modal) {
+          display: none !important;
+        }
+        #receipt-print-modal {
+          all: unset !important;
+          display: block !important;
+          position: static !important;
+          background: white !important;
+          backdrop-filter: none !important;
+          -webkit-backdrop-filter: none !important;
+          padding: 0 !important;
+          width: 100% !important;
+          height: auto !important;
+        }
+        #receipt-print-modal > div {
+          all: unset !important;
+          display: block !important;
+          width: 100% !important;
+          max-width: 100% !important;
+          max-height: none !important;
+          overflow: visible !important;
+          box-shadow: none !important;
+          border: none !important;
+          border-radius: 0 !important;
+        }
+        #receipt-print-modal > div > div:first-child {
+          display: none !important;
+        }
+        #receipt-print-modal > div > div:last-child {
+          display: none !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+

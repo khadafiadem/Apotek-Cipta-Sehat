@@ -1,0 +1,6 @@
+{
+  "name": "Aplikasi Manajemen Apotek",
+  "description": "Aplikasi web manajemen apotek harian terintegrasi untuk transaksi penjualan (kasir), pembelian (pengadaan), manajemen stok (FIFO), resep dokter, obat racikan, pengingat kedaluwarsa, dan laporan keuangan komprehensif.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

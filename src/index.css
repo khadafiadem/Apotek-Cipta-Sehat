@@ -1,0 +1,46 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Plus Jakarta Sans", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+}
+
+/* Custom visual adjustments for the Sleek Interface Theme */
+#pharmacy-app-shell {
+  background-color: #f8fafc; /* bg-slate-50 */
+}
+
+/* Rounded card rules */
+.sleek-card {
+  background-color: #ffffff;
+  border-radius: 1.5rem; /* 24px rounded-3xl */
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05); /* shadow-sm */
+  border-width: 1px;
+  border-color: #f1f5f9; /* border-slate-100 */
+}
+
+/* Custom rounded corners for all modern elements */
+.rounded-3xl {
+  border-radius: 1.5rem !important;
+}
+
+.rounded-xl {
+  border-radius: 0.75rem !important;
+}
+
+/* Custom scrollbars for a cleaner UI look */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
