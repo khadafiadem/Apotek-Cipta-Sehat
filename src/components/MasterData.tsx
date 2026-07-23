@@ -19,7 +19,9 @@ import {
   Layers,
   Archive,
   BookOpen,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Pill,
+  Package
 } from 'lucide-react';
 import BatchImportModal from './BatchImportModal';
 
@@ -251,6 +253,9 @@ export default function MasterData() {
           >
             <Layers className="w-3.5 h-3.5" />
             <span>Data Obat-Obatan</span>
+            <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${activeSubTab === 'obat' ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-600'}`}>
+              {medicines.length}
+            </span>
           </button>
           <button
             onClick={() => { setActiveSubTab('supplier'); setSearchTerm(''); }}
@@ -258,6 +263,9 @@ export default function MasterData() {
           >
             <Users className="w-3.5 h-3.5" />
             <span>Supplier / Pemasok</span>
+            <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${activeSubTab === 'supplier' ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-600'}`}>
+              {suppliers.length}
+            </span>
           </button>
           <button
             onClick={() => { setActiveSubTab('pelanggan'); setSearchTerm(''); }}
@@ -265,6 +273,9 @@ export default function MasterData() {
           >
             <User className="w-3.5 h-3.5" />
             <span>Pelanggan / Customer</span>
+            <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${activeSubTab === 'pelanggan' ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-600'}`}>
+              {customers.length}
+            </span>
           </button>
           <button
             onClick={() => { setActiveSubTab('dokter'); setSearchTerm(''); }}
@@ -272,6 +283,9 @@ export default function MasterData() {
           >
             <BriefcaseMedical className="w-3.5 h-3.5" />
             <span>Database Dokter</span>
+            <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${activeSubTab === 'dokter' ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-600'}`}>
+              {doctors.length}
+            </span>
           </button>
         </div>
 
@@ -287,6 +301,36 @@ export default function MasterData() {
           />
         </div>
       </div>
+
+      {/* SUMMARY BANNER DATA OBAT */}
+      {activeSubTab === 'obat' && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-900 text-white p-4 sm:p-5 rounded-3xl border border-slate-800 shadow-sm">
+          <div className="space-y-0.5">
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Jenis Obat</p>
+            <p className="text-xl sm:text-2xl font-black font-mono text-emerald-400 flex items-baseline gap-1">
+              {medicines.length} <span className="text-xs font-bold text-slate-300 font-sans">Jenis</span>
+            </p>
+          </div>
+          <div className="space-y-0.5 border-l border-slate-800 pl-3 sm:pl-4">
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Stok Fisik</p>
+            <p className="text-xl sm:text-2xl font-black font-mono text-teal-400 flex items-baseline gap-1">
+              {medicines.reduce((sum, m) => sum + m.stok, 0).toLocaleString('id-ID')} <span className="text-xs font-bold text-slate-300 font-sans">Pcs</span>
+            </p>
+          </div>
+          <div className="space-y-0.5 border-l border-slate-800 pl-3 sm:pl-4">
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Stok Tersedia</p>
+            <p className="text-xl sm:text-2xl font-black font-mono text-emerald-300 flex items-baseline gap-1">
+              {medicines.filter(m => m.stok > 0).length} <span className="text-xs font-bold text-slate-300 font-sans">Obat</span>
+            </p>
+          </div>
+          <div className="space-y-0.5 border-l border-slate-800 pl-3 sm:pl-4">
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Stok Kosong</p>
+            <p className="text-xl sm:text-2xl font-black font-mono text-rose-400 flex items-baseline gap-1">
+              {medicines.filter(m => m.stok === 0).length} <span className="text-xs font-bold text-slate-300 font-sans">Obat</span>
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* READ ONLY ROLE WARNING */}
       {isReadOnly && (

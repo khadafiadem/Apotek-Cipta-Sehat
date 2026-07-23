@@ -14,7 +14,9 @@ import {
   ShoppingCart,
   Calendar,
   Layers,
-  ChevronRight
+  ChevronRight,
+  Pill,
+  Database
 } from 'lucide-react';
 
 interface DashboardProps {
@@ -94,10 +96,12 @@ export default function Dashboard({ setActiveTab, setSelectedSupplierIdForPO, se
   const cashOut = cashJournal.filter(c => c.tipe === 'keluar').reduce((sum, c) => sum + c.jumlah, 0);
   const netCash = cashIn - cashOut;
 
-  // Active inventory valuation
+  // Active inventory valuation & counts
   const totalStockValue = medicines.reduce((sum, m) => sum + m.stok * m.hargaBeli, 0);
   const potentialRevenue = medicines.reduce((sum, m) => sum + m.stok * m.hargaJual, 0);
   const potentialProfit = potentialRevenue - totalStockValue;
+  const totalStockUnits = medicines.reduce((sum, m) => sum + m.stok, 0);
+  const availableMedsCount = medicines.filter(m => m.stok > 0).length;
 
   // 2. ALERTS FOR LOW STOCK & EXPIRED
   const lowStockMeds = medicines.filter(m => m.stok === 0);
@@ -154,73 +158,94 @@ export default function Dashboard({ setActiveTab, setSelectedSupplierIdForPO, se
       </div>
 
       {/* KPI GRID */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        {/* Penjualan Hari Ini */}
-        <div className="bg-gradient-to-br from-emerald-50/60 via-white to-emerald-50/20 p-6 rounded-3xl border border-emerald-100/80 shadow-sm flex items-center justify-between transition-all hover:shadow-md hover:-translate-y-0.5 duration-200">
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-1.5">
-              <span className="inline-block w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
-              <span className="text-xs font-bold text-emerald-700 uppercase tracking-wider">Penjualan Hari Ini</span>
-            </div>
-            <h3 className="text-2xl font-black font-mono text-slate-950">
-              Rp {totalTodaySales.toLocaleString('id-ID')}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+        {/* Total Obat Terdaftar */}
+        <div 
+          onClick={() => setActiveTab('master')}
+          className="bg-gradient-to-br from-teal-50/60 via-white to-teal-50/20 p-5 rounded-3xl border border-teal-100/80 shadow-sm flex items-center justify-between transition-all hover:shadow-md hover:-translate-y-0.5 duration-200 cursor-pointer group"
+          title="Klik untuk membuka Data Master Obat"
+        >
+          <div className="space-y-1">
+            <span className="text-[11px] font-bold text-teal-700 uppercase tracking-wider">Total Obat</span>
+            <h3 className="text-2xl font-black font-mono text-slate-950 flex items-baseline gap-1">
+              {medicines.length} <span className="text-xs font-bold text-teal-700 font-sans">Jenis</span>
             </h3>
-            <div className="inline-flex items-center gap-1 text-[11px] bg-emerald-50 text-emerald-800 px-2 py-0.5 rounded-lg font-bold">
-              <ArrowUpRight className="w-3.5 h-3.5" />
-              <span>+{countTodaySales} Transaksi ({totalTodayItems} item)</span>
+            <div className="inline-flex items-center gap-1 text-[10px] bg-teal-50 text-teal-800 px-2 py-0.5 rounded-lg font-bold">
+              <Package className="w-3 h-3 text-teal-600" />
+              <span>{totalStockUnits.toLocaleString('id-ID')} Pcs Stok</span>
             </div>
           </div>
-          <div className="p-4 bg-emerald-500/10 text-emerald-600 rounded-2xl shadow-xs">
+          <div className="p-3.5 bg-teal-500/10 text-teal-600 rounded-2xl group-hover:bg-teal-500 group-hover:text-white transition-colors shadow-xs">
+            <Pill className="w-5 h-5" />
+          </div>
+        </div>
+
+        {/* Penjualan Hari Ini */}
+        <div className="bg-gradient-to-br from-emerald-50/60 via-white to-emerald-50/20 p-5 rounded-3xl border border-emerald-100/80 shadow-sm flex items-center justify-between transition-all hover:shadow-md hover:-translate-y-0.5 duration-200">
+          <div className="space-y-1">
+            <div className="flex items-center gap-1.5">
+              <span className="inline-block w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
+              <span className="text-[11px] font-bold text-emerald-700 uppercase tracking-wider">Penjualan Hari Ini</span>
+            </div>
+            <h3 className="text-xl font-black font-mono text-slate-950">
+              Rp {totalTodaySales.toLocaleString('id-ID')}
+            </h3>
+            <div className="inline-flex items-center gap-1 text-[10px] bg-emerald-50 text-emerald-800 px-2 py-0.5 rounded-lg font-bold">
+              <ArrowUpRight className="w-3 h-3" />
+              <span>+{countTodaySales} Tx ({totalTodayItems} item)</span>
+            </div>
+          </div>
+          <div className="p-3.5 bg-emerald-500/10 text-emerald-600 rounded-2xl shadow-xs">
             <ShoppingCart className="w-5 h-5" />
           </div>
         </div>
 
         {/* Total Sales */}
-        <div className="bg-gradient-to-br from-blue-50/60 via-white to-blue-50/20 p-6 rounded-3xl border border-blue-100/80 shadow-sm flex items-center justify-between transition-all hover:shadow-md hover:-translate-y-0.5 duration-200">
-          <div className="space-y-1.5">
-            <span className="text-xs font-bold text-blue-600 uppercase tracking-wider">Total Penjualan</span>
-            <h3 className="text-2xl font-black font-mono text-slate-950">
+        <div className="bg-gradient-to-br from-blue-50/60 via-white to-blue-50/20 p-5 rounded-3xl border border-blue-100/80 shadow-sm flex items-center justify-between transition-all hover:shadow-md hover:-translate-y-0.5 duration-200">
+          <div className="space-y-1">
+            <span className="text-[11px] font-bold text-blue-600 uppercase tracking-wider">Total Penjualan</span>
+            <h3 className="text-xl font-black font-mono text-slate-950">
               Rp {totalSales.toLocaleString('id-ID')}
             </h3>
-            <div className="inline-flex items-center gap-1 text-[11px] bg-blue-50 text-blue-700 px-2 py-0.5 rounded-lg font-bold">
-              <TrendingUp className="w-3.5 h-3.5" />
+            <div className="inline-flex items-center gap-1 text-[10px] bg-blue-50 text-blue-700 px-2 py-0.5 rounded-lg font-bold">
+              <TrendingUp className="w-3 h-3" />
               <span>+{salesTransactions.length} Transaksi</span>
             </div>
           </div>
-          <div className="p-4 bg-blue-500/10 text-blue-600 rounded-2xl shadow-xs">
+          <div className="p-3.5 bg-blue-500/10 text-blue-600 rounded-2xl shadow-xs">
             <ShoppingCart className="w-5 h-5" />
           </div>
         </div>
 
         {/* Total Purchases */}
-        <div className="bg-gradient-to-br from-amber-50/60 via-white to-amber-50/20 p-6 rounded-3xl border border-amber-100/80 shadow-sm flex items-center justify-between transition-all hover:shadow-md hover:-translate-y-0.5 duration-200">
-          <div className="space-y-1.5">
-            <span className="text-xs font-bold text-amber-700 uppercase tracking-wider">Total Belanja Obat</span>
-            <h3 className="text-2xl font-black font-mono text-slate-950">
+        <div className="bg-gradient-to-br from-amber-50/60 via-white to-amber-50/20 p-5 rounded-3xl border border-amber-100/80 shadow-sm flex items-center justify-between transition-all hover:shadow-md hover:-translate-y-0.5 duration-200">
+          <div className="space-y-1">
+            <span className="text-[11px] font-bold text-amber-700 uppercase tracking-wider">Total Belanja Obat</span>
+            <h3 className="text-xl font-black font-mono text-slate-950">
               Rp {totalPurchases.toLocaleString('id-ID')}
             </h3>
-            <div className="inline-flex items-center gap-1 text-[11px] bg-amber-50 text-amber-800 px-2 py-0.5 rounded-lg font-bold">
-              <Layers className="w-3.5 h-3.5" />
+            <div className="inline-flex items-center gap-1 text-[10px] bg-amber-50 text-amber-800 px-2 py-0.5 rounded-lg font-bold">
+              <Layers className="w-3 h-3" />
               <span>Stok Bertambah</span>
             </div>
           </div>
-          <div className="p-4 bg-amber-500/10 text-amber-700 rounded-2xl shadow-xs">
+          <div className="p-3.5 bg-amber-500/10 text-amber-700 rounded-2xl shadow-xs">
             <Package className="w-5 h-5" />
           </div>
         </div>
 
         {/* Inventory value */}
-        <div className="bg-gradient-to-br from-purple-50/60 via-white to-purple-50/20 p-6 rounded-3xl border border-purple-100/80 shadow-sm flex items-center justify-between transition-all hover:shadow-md hover:-translate-y-0.5 duration-200">
-          <div className="space-y-1.5">
-            <span className="text-xs font-bold text-purple-700 uppercase tracking-wider">Nilai Aset Stok (Modal)</span>
-            <h3 className="text-2xl font-black font-mono text-slate-950">
+        <div className="bg-gradient-to-br from-purple-50/60 via-white to-purple-50/20 p-5 rounded-3xl border border-purple-100/80 shadow-sm flex items-center justify-between transition-all hover:shadow-md hover:-translate-y-0.5 duration-200">
+          <div className="space-y-1">
+            <span className="text-[11px] font-bold text-purple-700 uppercase tracking-wider">Aset Modal Stok</span>
+            <h3 className="text-xl font-black font-mono text-slate-950">
               Rp {totalStockValue.toLocaleString('id-ID')}
             </h3>
-            <div className="inline-flex items-center gap-1 text-[11px] bg-purple-50 text-purple-800 px-2 py-0.5 rounded-lg font-bold">
+            <div className="inline-flex items-center gap-1 text-[10px] bg-purple-50 text-purple-800 px-2 py-0.5 rounded-lg font-bold">
               <span>Omset: Rp {potentialRevenue.toLocaleString('id-ID')}</span>
             </div>
           </div>
-          <div className="p-4 bg-purple-500/10 text-purple-600 rounded-2xl shadow-xs">
+          <div className="p-3.5 bg-purple-500/10 text-purple-600 rounded-2xl shadow-xs">
             <Layers className="w-5 h-5" />
           </div>
         </div>

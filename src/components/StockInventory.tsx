@@ -119,18 +119,24 @@ export default function StockInventory() {
             Audit mutasi stok real-time, monitoring obat kadaluwarsa/kosong harian, dan pencatatan stock opname fisik apotek.
           </p>
         </div>
-        {!isReadOnly && activeSubTab === 'opname' && (
-          <button
-            onClick={() => {
-              setOpnameItems([]);
-              setShowOpnameModal(true);
-            }}
-            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-medium text-sm transition-colors shadow-xs"
-          >
-            <ClipboardList className="w-4 h-4" />
-            <span>Mulai Opname Fisik Baru</span>
-          </button>
-        )}
+        <div className="flex items-center gap-3">
+          <div className="bg-emerald-50 border border-emerald-200/80 rounded-2xl px-4 py-2 flex items-center gap-2 text-xs font-bold text-emerald-800">
+            <Archive className="w-4 h-4 text-emerald-600" />
+            <span>Total Obat: {medicines.length} Jenis ({medicines.reduce((sum, m) => sum + m.stok, 0).toLocaleString('id-ID')} Pcs)</span>
+          </div>
+          {!isReadOnly && activeSubTab === 'opname' && (
+            <button
+              onClick={() => {
+                setOpnameItems([]);
+                setShowOpnameModal(true);
+              }}
+              className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-medium text-sm transition-colors shadow-xs"
+            >
+              <ClipboardList className="w-4 h-4" />
+              <span>Mulai Opname Fisik Baru</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Subtab selection */}

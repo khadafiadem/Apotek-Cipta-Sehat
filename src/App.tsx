@@ -170,7 +170,7 @@ function MainAppShell() {
 
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard Utama', icon: LayoutDashboard },
-    { id: 'master', label: 'Data Master', icon: Database },
+    { id: 'master', label: 'Data Master', icon: Database, badge: `${medicines.length} Obat`, badgeColor: 'bg-emerald-600' },
     { id: 'sales', label: 'POS Kasir', icon: ShoppingCart },
     { id: 'purchase', label: 'Pengadaan PO', icon: Truck, badge: poPrepopulate ? 'Draft' : undefined },
     { id: 'inventory', label: 'Stok & Opname', icon: Package, badge: lowStockCount > 0 ? `${lowStockCount}!` : undefined, badgeColor: 'bg-rose-500' },
@@ -314,8 +314,17 @@ function MainAppShell() {
           </button>
         </div>
 
-        {/* Warnings alert counters */}
+        {/* Warnings alert counters & Total Obat */}
         <div className="p-4 border-t border-slate-800 bg-slate-950/40 space-y-2 text-[10px]">
+          <div className="flex items-center justify-between text-emerald-400 font-semibold pb-1 border-b border-slate-800/60">
+            <span className="flex items-center gap-1.5">
+              <Package className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Total Obat:</span>
+            </span>
+            <span className="font-mono bg-emerald-500/20 text-emerald-300 px-1.5 py-0.5 rounded font-bold">
+              {medicines.length} Jenis ({medicines.reduce((sum, m) => sum + m.stok, 0).toLocaleString('id-ID')} Pcs)
+            </span>
+          </div>
           {criticalExpiryCount > 0 && (
             <div className="flex items-center gap-2 text-rose-400 font-semibold">
               <AlertTriangle className="w-3.5 h-3.5" />
