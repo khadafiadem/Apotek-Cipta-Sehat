@@ -58,19 +58,57 @@ export default function BatchImportModal({ isOpen, onClose }: BatchImportModalPr
   const userNameLower = (loggedInUser?.name || '').toLowerCase().trim();
   const isKhadafi = userNameLower.includes('khadafi') || userNameLower.includes('mohammad khadafi');
 
-  // Helper to normalize and sanitize numbers (e.g. "Rp 15.000", "15,000", "15000.00")
+  // Helper to normalize and sanitize numbers (e.g. "Rp 15.000", "15.000,00", "15,000", "15000.00")
   const parseNum = (val: any, defaultVal = 0): number => {
     if (val === undefined || val === null || val === '') return defaultVal;
     if (typeof val === 'number') return isNaN(val) ? defaultVal : val;
-    const str = String(val).replace(/[^0-9.-]/g, '');
+    let str = String(val).trim();
+    if (!str) return defaultVal;
+
+    // Remove currency symbols & non-numeric except dot and comma and minus
+    str = str.replace(/[^0-9.,-]/g, '');
+    if (!str) return defaultVal;
+
+    if (str.includes('.') && str.includes(',')) {
+      if (str.indexOf('.') < str.indexOf(',')) {
+        // 15.000,00 -> ID style
+        str = str.replace(/\./g, '').replace(',', '.');
+      } else {
+        // 15,000.00 -> US style
+        str = str.replace(/,/g, '');
+      }
+    } else if (str.includes('.')) {
+      const parts = str.split('.');
+      if (parts.length > 2) {
+        str = str.replace(/\./g, '');
+      } else if (parts.length === 2 && parts[1].length === 3) {
+        // 15.000 -> 15000
+        str = str.replace('.', '');
+      }
+    } else if (str.includes(',')) {
+      const parts = str.split(',');
+      if (parts.length > 2) {
+        str = str.replace(/,/g, '');
+      } else if (parts.length === 2 && parts[1].length === 3) {
+        str = str.replace(',', '');
+      } else {
+        str = str.replace(',', '.');
+      }
+    }
+
     const num = parseFloat(str);
     return isNaN(num) ? defaultVal : num;
   };
 
-  // Helper to normalize date strings (Excel serials, DD/MM/YYYY, YYYY-MM-DD)
+  // Helper to normalize date strings (Excel serials, DD/MM/YYYY, YYYY-MM-DD, Date objects)
   const parseDateStr = (val: any): string => {
     if (!val) {
       return new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    }
+    if (val instanceof Date) {
+      if (!isNaN(val.getTime())) {
+        return val.toISOString().split('T')[0];
+      }
     }
     // Handle Excel Serial Date Number (e.g., 45000)
     if (typeof val === 'number') {
@@ -82,12 +120,21 @@ export default function BatchImportModal({ isOpen, onClose }: BatchImportModalPr
     const str = String(val).trim();
     if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
 
-    // Handle DD/MM/YYYY or DD-MM-YYYY
-    const dmy = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+    // Handle DD/MM/YYYY, DD-MM-YYYY, or DD.MM.YYYY
+    const dmy = str.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})$/);
     if (dmy) {
       const day = dmy[1].padStart(2, '0');
       const month = dmy[2].padStart(2, '0');
       const year = dmy[3];
+      return `${year}-${month}-${day}`;
+    }
+
+    // Handle YYYY/MM/DD
+    const ymd = str.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/);
+    if (ymd) {
+      const year = ymd[1];
+      const month = ymd[2].padStart(2, '0');
+      const day = ymd[3].padStart(2, '0');
       return `${year}-${month}-${day}`;
     }
 
@@ -107,36 +154,195 @@ export default function BatchImportModal({ isOpen, onClose }: BatchImportModalPr
     const findVal = (possibleKeys: string[]) => {
       const key = keys.find(k => {
         const cleanK = k.toLowerCase().replace(/[^a-z0-9]/g, '');
-        return possibleKeys.some(pk => cleanK === pk.replace(/[^a-z0-9]/g, ''));
+        return possibleKeys.some(pk => {
+          const cleanPk = pk.replace(/[^a-z0-9]/g, '');
+          return cleanK === cleanPk || cleanK.includes(cleanPk);
+        });
       });
       return key !== undefined ? row[key] : undefined;
     };
 
-    const nama = findVal(['nama', 'nama_obat', 'namaobat', 'name', 'medicine', 'item']) || '';
-    if (!nama || String(nama).trim() === '') return null;
+    const namaKeys = [
+      'nama', 'nama_obat', 'namaobat', 'nama_barang', 'namabarang', 'nama_brg', 'namabrg', 
+      'nama_produk', 'namaproduk', 'nama_item', 'namaitem', 'deskripsi', 'description', 
+      'name', 'medicine', 'item', 'barang', 'produk', 'obat', 'merk', 'product', 'title'
+    ];
+    const kategoriKeys = ['kategori', 'category', 'golongan', 'jenis', 'kelompok', 'tipe', 'group'];
+    const satuanKeys = ['satuan', 'unit', 'kemasan', 'sediaan', 'uom', 'pack', 'bentuk'];
+    const hargaBeliKeys = [
+      'harga_beli', 'hargabeli', 'harga beli', 'buy_price', 'cost', 'h_beli', 'hbeli', 
+      'hpp', 'modal', 'harga_modal', 'hargamodal', 'harga_dasar', 'hargadasar', 'beli'
+    ];
+    const hargaJualKeys = [
+      'harga_jual', 'hargajual', 'harga jual', 'sell_price', 'price', 'h_jual', 'hjual', 
+      'harga', 'het', 'hja', 'harga_neto', 'harga_het', 'jual'
+    ];
+    const stokKeys = [
+      'stok', 'stock', 'jumlah', 'qty', 'quantity', 'sisa', 'stok_akhir', 'stokakhir', 
+      'sisa_stok', 'sisastok', 'saldo', 'stok_fisik', 'fisik', 'stok_tersedia'
+    ];
+    const batchKeys = ['batch', 'no_batch', 'nobatch', 'no batch', 'nobot', 'lot', 'no_lot', 'nolot', 'batch_no'];
+    const expiredKeys = [
+      'expired_date', 'expireddate', 'expired date', 'ed', 'exp', 'kadaluarsa', 'tgl_exp', 
+      'tgl_ed', 'tanggal_exp', 'tanggal_ed', 'exp_date', 'expiration', 'expired'
+    ];
+    const rakKeys = ['lokasi_rak', 'lokasirak', 'lokasi rak', 'rak', 'location', 'posisi', 'tempat', 'lokasi'];
+    const stokMinKeys = ['stok_min', 'stokmin', 'stok min', 'min_stok', 'minstok', 'minimal', 'limit', 'min'];
 
-    const kategori = findVal(['kategori', 'category', 'golongan', 'jenis']) || 'Umum';
-    const satuan = findVal(['satuan', 'unit', 'kemasan']) || 'Tablet';
-    const hargaBeli = parseNum(findVal(['harga_beli', 'hargabeli', 'harga beli', 'buy_price', 'cost']), 0);
-    const hargaJual = parseNum(findVal(['harga_jual', 'hargajual', 'harga jual', 'sell_price', 'price']), 0);
-    const stok = parseNum(findVal(['stok', 'stock', 'jumlah', 'qty', 'quantity']), 0);
-    const batch = String(findVal(['batch', 'no_batch', 'nobatch', 'no batch']) || `BATCH-${Math.random().toString(36).substring(2, 7).toUpperCase()}`);
-    const expiredDate = parseDateStr(findVal(['expired_date', 'expireddate', 'expired date', 'ed', 'exp', 'kadaluarsa']));
-    const lokasiRak = String(findVal(['lokasi_rak', 'lokasirak', 'lokasi rak', 'rak', 'location']) || 'Rak Umum');
-    const stokMin = parseNum(findVal(['stok_min', 'stokmin', 'stok min', 'min_stok']), 10);
+    const nama = findVal(namaKeys) || '';
+    if (!nama || String(nama).trim() === '' || String(nama).trim().toLowerCase() === 'nama obat') return null;
+
+    const kategori = findVal(kategoriKeys) || 'Umum';
+    const satuan = findVal(satuanKeys) || 'Tablet';
+    const hargaBeli = parseNum(findVal(hargaBeliKeys), 0);
+    const hargaJual = parseNum(findVal(hargaJualKeys), 0);
+    const stok = parseNum(findVal(stokKeys), 0);
+    const batch = String(findVal(batchKeys) || `BATCH-${Math.random().toString(36).substring(2, 7).toUpperCase()}`);
+    const expiredDate = parseDateStr(findVal(expiredKeys));
+    const lokasiRak = String(findVal(rakKeys) || 'Rak Umum');
+    const stokMin = parseNum(findVal(stokMinKeys), 10);
 
     return {
       nama: String(nama).trim(),
       kategori: String(kategori).trim(),
       satuan: String(satuan).trim(),
       hargaBeli,
-      hargaJual,
+      hargaJual: hargaJual > 0 ? hargaJual : Math.round(hargaBeli * 1.2),
       stok,
       batch,
       expiredDate,
       lokasiRak,
       stokMin
     };
+  };
+
+  // Fallback for rows without header
+  const mapRowWithoutHeader = (rowArr: any[]): Omit<Medicine, 'id'> | null => {
+    if (!Array.isArray(rowArr) || rowArr.length === 0) return null;
+    const stringCells = rowArr.map(c => String(c || '').trim()).filter(Boolean);
+    if (stringCells.length === 0) return null;
+
+    const candidateNames = stringCells.filter(s => {
+      if (/^\d+$/.test(s)) return false;
+      if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
+      if (/^\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{4}$/.test(s)) return false;
+      if (s.toLowerCase().startsWith('rak')) return false;
+      if (['tablet', 'kaplet', 'sirup', 'botol', 'ampul', 'vial', 'tube', 'pcs', 'box'].includes(s.toLowerCase())) return false;
+      return s.length >= 2;
+    });
+
+    if (candidateNames.length === 0) return null;
+    const nama = candidateNames[0];
+
+    const numbers: number[] = [];
+    rowArr.forEach(c => {
+      if (typeof c === 'number' && !isNaN(c)) numbers.push(c);
+      else if (typeof c === 'string' && /^\d+[\d.,]*$/.test(c.trim())) {
+        const parsed = parseNum(c, -1);
+        if (parsed >= 0) numbers.push(parsed);
+      }
+    });
+
+    let hargaBeli = 0;
+    let hargaJual = 0;
+    let stok = 0;
+
+    if (numbers.length >= 3) {
+      hargaBeli = numbers[0];
+      hargaJual = numbers[1];
+      stok = numbers[2];
+    } else if (numbers.length === 2) {
+      hargaBeli = numbers[0];
+      hargaJual = numbers[1];
+    } else if (numbers.length === 1) {
+      stok = numbers[0];
+    }
+
+    return {
+      nama,
+      kategori: 'Umum',
+      satuan: 'Tablet',
+      hargaBeli,
+      hargaJual: hargaJual > 0 ? hargaJual : Math.round(hargaBeli * 1.2),
+      stok,
+      batch: `BATCH-${Math.random().toString(36).substring(2, 7).toUpperCase()}`,
+      expiredDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      lokasiRak: 'Rak Umum',
+      stokMin: 10
+    };
+  };
+
+  // Robust Sheet Parser
+  const parseSheetToMedicines = (worksheet: XLSX.WorkSheet): Omit<Medicine, 'id'>[] => {
+    const matrix: any[][] = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' });
+    if (!matrix || matrix.length === 0) return [];
+
+    const headerKeywords = [
+      'nama', 'obat', 'barang', 'produk', 'item', 'deskripsi', 'kategori', 'golongan',
+      'satuan', 'kemasan', 'harga', 'beli', 'jual', 'stok', 'qty', 'jumlah', 'batch',
+      'expired', 'kadaluarsa', 'ed', 'exp', 'rak', 'lokasi', 'kode', 'uom', 'cost', 'price'
+    ];
+
+    let bestHeaderRowIdx = -1;
+    let maxMatchScore = 0;
+
+    const scanLimit = Math.min(20, matrix.length);
+    for (let r = 0; r < scanLimit; r++) {
+      const row = matrix[r];
+      if (!Array.isArray(row)) continue;
+
+      let score = 0;
+      row.forEach(cell => {
+        if (!cell) return;
+        const cellStr = String(cell).toLowerCase().replace(/[^a-z0-9]/g, '');
+        if (headerKeywords.some(kw => cellStr.includes(kw))) {
+          score++;
+        }
+      });
+
+      if (score > maxMatchScore) {
+        maxMatchScore = score;
+        bestHeaderRowIdx = r;
+      }
+    }
+
+    let rawRows: Record<string, any>[] = [];
+
+    if (bestHeaderRowIdx >= 0 && maxMatchScore >= 1) {
+      const headerRow = matrix[bestHeaderRowIdx].map(cell => String(cell || '').trim());
+      const dataRows = matrix.slice(bestHeaderRowIdx + 1);
+
+      rawRows = dataRows.map(rowArray => {
+        const rowObj: Record<string, any> = {};
+        headerRow.forEach((hName, colIdx) => {
+          if (hName) {
+            rowObj[hName] = rowArray[colIdx] !== undefined ? rowArray[colIdx] : '';
+          } else {
+            rowObj[`__COL_${colIdx}`] = rowArray[colIdx] !== undefined ? rowArray[colIdx] : '';
+          }
+        });
+        return rowObj;
+      });
+    } else {
+      rawRows = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+    }
+
+    let normalized = rawRows.map(row => mapRowToMedicine(row)).filter(Boolean) as Omit<Medicine, 'id'>[];
+
+    if (normalized.length === 0 && matrix.length > 0) {
+      const fallbackList: Omit<Medicine, 'id'>[] = [];
+      matrix.forEach(rowArr => {
+        const smartMed = mapRowWithoutHeader(rowArr);
+        if (smartMed) {
+          fallbackList.push(smartMed);
+        }
+      });
+      if (fallbackList.length > 0) {
+        normalized = fallbackList;
+      }
+    }
+
+    return normalized;
   };
 
   // Handle File Upload Change
@@ -173,16 +379,24 @@ export default function BatchImportModal({ isOpen, onClose }: BatchImportModalPr
       reader.onload = (event) => {
         try {
           const data = new Uint8Array(event.target?.result as ArrayBuffer);
-          const workbook = XLSX.read(data, { type: 'array' });
-          const firstSheetName = workbook.SheetNames[0];
-          const worksheet = workbook.Sheets[firstSheetName];
-          const rawRows = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+          const workbook = XLSX.read(data, { type: 'array', cellDates: true });
+          
+          let foundMedicines: Omit<Medicine, 'id'>[] = [];
 
-          const normalized = rawRows.map(mapRowToMedicine).filter(Boolean) as Omit<Medicine, 'id'>[];
-          if (normalized.length === 0) {
-            setParseError('Tidak ada baris data obat yang valid ditemukan di worksheet.');
+          // Scan through all sheets until valid medicines are found
+          for (const sheetName of workbook.SheetNames) {
+            const worksheet = workbook.Sheets[sheetName];
+            const parsed = parseSheetToMedicines(worksheet);
+            if (parsed.length > 0) {
+              foundMedicines = parsed;
+              break;
+            }
+          }
+
+          if (foundMedicines.length === 0) {
+            setParseError('Tidak ada baris data obat yang valid ditemukan di worksheet. Pastikan terdapat kolom dengan header "Nama Obat" (atau "Nama Barang" / "Obat"), atau gunakan tombol "Template .XLSX" di atas.');
           } else {
-            setParsedData(normalized);
+            setParsedData(foundMedicines);
           }
         } catch (err) {
           setParseError('Gagal membaca spreadsheet: ' + (err as Error).message);
@@ -213,11 +427,20 @@ export default function BatchImportModal({ isOpen, onClose }: BatchImportModalPr
       } else {
         // Parse CSV / TSV text via XLSX
         const workbook = XLSX.read(pastedText, { type: 'string' });
-        const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-        const rawRows = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
-        const normalized = rawRows.map(mapRowToMedicine).filter(Boolean) as Omit<Medicine, 'id'>[];
-        if (normalized.length === 0) setParseError('Format teks CSV/TSV tidak menghasilkan data obat.');
-        else setParsedData(normalized);
+        let foundMedicines: Omit<Medicine, 'id'>[] = [];
+        for (const sheetName of workbook.SheetNames) {
+          const worksheet = workbook.Sheets[sheetName];
+          const parsed = parseSheetToMedicines(worksheet);
+          if (parsed.length > 0) {
+            foundMedicines = parsed;
+            break;
+          }
+        }
+        if (foundMedicines.length === 0) {
+          setParseError('Format teks tidak menghasilkan data obat. Pastikan baris pertama memiliki nama kolom seperti "Nama Obat".');
+        } else {
+          setParsedData(foundMedicines);
+        }
       }
     } catch (err) {
       setParseError('Gagal memproses data teks: ' + (err as Error).message);
