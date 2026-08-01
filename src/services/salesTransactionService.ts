@@ -64,4 +64,9 @@ export const salesTransactionService = {
     const { error } = await supabase.from(TABLE).upsert(rows, { onConflict: 'id' });
     if (error) throw error;
   },
+
+  async delete(id: string): Promise<void> {
+    const { error } = await supabase.from(TABLE).delete().eq('id', id);
+    if (error) throw error;
+  },
 };
