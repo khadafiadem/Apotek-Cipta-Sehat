@@ -193,6 +193,7 @@ export default function PurchaseModule({ poItemsPrepopulate, clearPOItemsPrepopu
 
   // Item builder fields (add item line by line)
   const [tempRecvObatId, setTempRecvObatId] = useState('');
+  const [medSearchFilter, setMedSearchFilter] = useState('');
   const [tempRecvQty, setTempRecvQty] = useState<number>(10);
   const [tempRecvHarga, setTempRecvHarga] = useState<number>(0);
   const [tempRecvDiskon, setTempRecvDiskon] = useState<number>(0);
@@ -917,45 +918,89 @@ export default function PurchaseModule({ poItemsPrepopulate, clearPOItemsPrepopu
               </div>
 
               {/* Item Adder Box */}
-              <div className="bg-white p-3.5 border border-gray-200 rounded-xl space-y-3">
+              <div className="bg-white p-4 border border-indigo-100 rounded-xl space-y-3.5 shadow-2xs">
+                {/* Search Filter for Medicines */}
+                {medicines.length > 5 && (
+                  <div className="flex items-center gap-2 bg-indigo-50/50 p-2 rounded-lg border border-indigo-100">
+                    <span className="text-[10px] font-bold text-indigo-900 uppercase whitespace-nowrap">🔍 Filter Nama Obat:</span>
+                    <input
+                      type="text"
+                      value={medSearchFilter}
+                      onChange={e => setMedSearchFilter(e.target.value)}
+                      placeholder="Ketik untuk memfilter nama obat (contoh: Paracetamol)..."
+                      className="w-full bg-white border border-indigo-200 rounded px-2 py-1 text-xs text-gray-900 font-semibold placeholder:text-gray-400 focus:outline-hidden focus:ring-1 focus:ring-indigo-500"
+                    />
+                    {medSearchFilter && (
+                      <button
+                        type="button"
+                        onClick={() => setMedSearchFilter('')}
+                        className="text-[10px] font-bold text-indigo-600 hover:text-indigo-800 bg-white px-2 py-0.5 rounded border border-indigo-200"
+                      >
+                        Reset
+                      </button>
+                    )}
+                  </div>
+                )}
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3">
                   <div className="lg:col-span-4">
-                    <label className="block text-[10px] font-bold text-gray-500 uppercase mb-0.5">Pilih Obat *</label>
+                    <label className="block text-[10px] font-bold text-gray-700 uppercase mb-0.5">
+                      Pilih Nama Obat *
+                    </label>
                     <select
+                      required
                       value={tempRecvObatId}
                       onChange={e => setTempRecvObatId(e.target.value)}
-                      className="w-full border border-gray-200 rounded-lg p-2 text-xs bg-white font-semibold"
+                      className="w-full border border-gray-300 rounded-lg p-2 text-xs bg-white text-gray-900 font-extrabold focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-600 shadow-2xs"
                     >
-                      <option value="">-- Pilih Obat dari Master Data --</option>
-                      {medicines.map(m => (
-                        <option key={m.id} value={m.id}>
-                          {m.nama} (Stok Saat Ini: {m.stok} {m.satuan})
-                        </option>
-                      ))}
+                      <option value="" className="text-gray-500 bg-white">-- Pilih Obat dari Master Data --</option>
+                      {medicines
+                        .filter(m => !medSearchFilter || m.nama.toLowerCase().includes(medSearchFilter.toLowerCase()) || m.kategori.toLowerCase().includes(medSearchFilter.toLowerCase()))
+                        .map(m => (
+                          <option key={m.id} value={m.id} className="text-gray-900 bg-white font-semibold py-1">
+                            {m.nama} (Stok: {m.stok} {m.satuan} | Rp {m.hargaBeli.toLocaleString('id-ID')})
+                          </option>
+                        ))}
                     </select>
+
+                    {/* Selected Medicine Info Badge */}
+                    {tempRecvObatId && (() => {
+                      const selMed = medicines.find(m => m.id === tempRecvObatId);
+                      if (!selMed) return null;
+                      return (
+                        <div className="mt-1.5 p-2 bg-emerald-50 border border-emerald-200 rounded-md text-[11px] text-emerald-900 font-semibold space-y-0.5">
+                          <p className="font-extrabold text-emerald-950 flex items-center gap-1">
+                            <span>✓</span> <span>{selMed.nama}</span>
+                          </p>
+                          <p className="text-[10px] text-emerald-800">
+                            Kategori: {selMed.kategori} | Satuan: {selMed.satuan} | Stok: {selMed.stok} | Rak: {selMed.lokasiRak || '-'}
+                          </p>
+                        </div>
+                      );
+                    })()}
                   </div>
 
                   <div className="lg:col-span-2">
-                    <label className="block text-[10px] font-bold text-gray-500 uppercase mb-0.5">Qty Fisik Masuk *</label>
+                    <label className="block text-[10px] font-bold text-gray-700 uppercase mb-0.5">Qty Masuk *</label>
                     <input
                       type="number" min="1" value={tempRecvQty} onChange={e => setTempRecvQty(Number(e.target.value))}
-                      className="w-full border border-gray-200 rounded-lg p-2 text-xs font-mono font-bold"
+                      className="w-full border border-gray-300 rounded-lg p-2 text-xs font-mono font-bold text-gray-900 bg-white focus:ring-2 focus:ring-indigo-500/20"
                     />
                   </div>
 
                   <div className="lg:col-span-2">
-                    <label className="block text-[10px] font-bold text-gray-500 uppercase mb-0.5">Harga Beli Satuan (Rp)</label>
+                    <label className="block text-[10px] font-bold text-gray-700 uppercase mb-0.5">Harga Beli Satuan (Rp)</label>
                     <input
                       type="number" min="0" value={tempRecvHarga} onChange={e => setTempRecvHarga(Number(e.target.value))}
-                      className="w-full border border-gray-200 rounded-lg p-2 text-xs font-mono"
+                      className="w-full border border-gray-300 rounded-lg p-2 text-xs font-mono font-bold text-gray-900 bg-white focus:ring-2 focus:ring-indigo-500/20"
                     />
                   </div>
 
                   <div className="lg:col-span-2">
-                    <label className="block text-[10px] font-bold text-gray-500 uppercase mb-0.5">Diskon Item (%)</label>
+                    <label className="block text-[10px] font-bold text-gray-700 uppercase mb-0.5">Diskon Item (%)</label>
                     <input
                       type="number" min="0" max="100" value={tempRecvDiskon} onChange={e => setTempRecvDiskon(Number(e.target.value))}
-                      className="w-full border border-gray-200 rounded-lg p-2 text-xs font-mono"
+                      className="w-full border border-gray-300 rounded-lg p-2 text-xs font-mono font-bold text-gray-900 bg-white focus:ring-2 focus:ring-indigo-500/20"
                       placeholder="0"
                     />
                   </div>
@@ -965,10 +1010,10 @@ export default function PurchaseModule({ poItemsPrepopulate, clearPOItemsPrepopu
                       type="button"
                       onClick={addRecvItem}
                       disabled={!tempRecvObatId || tempRecvQty <= 0}
-                      className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-200 text-white p-2 rounded-lg text-xs font-bold transition-colors flex items-center justify-center gap-1.5 shadow-2xs"
+                      className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-200 text-white p-2 rounded-lg text-xs font-extrabold transition-colors flex items-center justify-center gap-1.5 shadow-xs"
                     >
                       <Plus className="w-4 h-4" />
-                      <span>Tambah Item</span>
+                      <span>+ Tambah Item</span>
                     </button>
                   </div>
                 </div>
@@ -1031,7 +1076,9 @@ export default function PurchaseModule({ poItemsPrepopulate, clearPOItemsPrepopu
                           return (
                             <tr key={idx} className="hover:bg-gray-50/50 transition-colors">
                               <td className="py-2.5 px-3 font-mono text-[11px] text-gray-400">{idx + 1}</td>
-                              <td className="py-2.5 px-3 font-bold text-gray-900">{item.namaObat}</td>
+                              <td className="py-2.5 px-3 font-extrabold text-gray-900">
+                                {item.namaObat || medicines.find(m => m.id === item.obatId)?.nama || 'Obat Tanpa Nama'}
+                              </td>
                               <td className="py-2.5 px-3 text-center">
                                 <input
                                   type="number" min="1" value={item.jumlahDiterima}
