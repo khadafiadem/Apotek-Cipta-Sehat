@@ -17,6 +17,7 @@ import {
   SupplierDebt,
   DebtPayment,
   SalesTransaction,
+  CancelledTransaction,
   ReturnSales,
   CustomerCredit,
   CreditPayment,
@@ -102,6 +103,20 @@ interface PharmacyContextType {
     caraBayar: 'tunai' | 'kredit',
     jatuhTempo?: string
   ) => void;
+  createDirectReceiving: (params: {
+    supplierId: string;
+    noFaktur?: string;
+    tglFaktur?: string;
+    tglTerima?: string;
+    hariTempo?: number;
+    jatuhTempo?: string;
+    itemsReceived: ReceivedItem[];
+    caraBayar: 'tunai' | 'kredit';
+    poId?: string;
+    diskonFaktur?: number;
+    ppnPersen?: number;
+    totalCustomNetto?: number;
+  }) => void;
   returnPurchase: (supplierId: string, items: { obatId: string; jumlah: number; alasan: string }[]) => void;
   payDebt: (debtId: string, jumlahBayar: number, metodeBayar: string) => void;
 
@@ -587,59 +602,132 @@ export const PharmacyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     purchaseOrderService.updateStatus(id, status).catch(e => console.error('Failed to update PO status:', e));
   };
 
-  // RECEIVE GOODS
-  const receivePurchaseOrder = (
-    poId: string, receivedItems: ReceivedItem[], caraBayar: 'tunai' | 'kredit', jatuhTempo?: string
-  ) => {
-    const po = purchaseOrders.find(p => p.id === poId);
-    if (!po) return;
-
+  // RECEIVE GOODS DIRECT OR FROM PO
+  const createDirectReceiving = (params: {
+    supplierId: string;
+    noFaktur?: string;
+    tglFaktur?: string;
+    tglTerima?: string;
+    hariTempo?: number;
+    jatuhTempo?: string;
+    itemsReceived: ReceivedItem[];
+    caraBayar: 'tunai' | 'kredit';
+    poId?: string;
+    diskonFaktur?: number;
+    ppnPersen?: number;
+    totalCustomNetto?: number;
+  }) => {
+    const supplier = suppliers.find(s => s.id === params.supplierId);
+    const supplierNama = supplier ? supplier.nama : 'Distributor';
     const timestamp = new Date().toISOString();
-    const totalReceipt = receivedItems.reduce((sum, item) => sum + item.jumlahDiterima * item.hargaBeli, 0);
     const rcvId = genId('RCV');
 
+    const grossTotal = params.itemsReceived.reduce((sum, item) => {
+      const disc = item.diskonPersen ? (item.hargaBeli * item.diskonPersen) / 100 : (item.diskonRp || 0);
+      return sum + (item.hargaBeli - disc) * item.jumlahDiterima;
+    }, 0);
+
+    const afterFakturDisc = Math.max(0, grossTotal - (params.diskonFaktur || 0));
+    const ppnRate = params.ppnPersen !== undefined ? params.ppnPersen : 11;
+    const ppnAmount = Math.round(afterFakturDisc * (ppnRate / 100));
+    const calculatedTotal = afterFakturDisc + ppnAmount;
+    const finalTotal = params.totalCustomNetto !== undefined ? params.totalCustomNetto : calculatedTotal;
+
     const newReceipt: ReceivingGoods = {
-      id: rcvId, poId, supplierId: po.supplierId, supplierNama: po.supplierNama,
-      tanggal: timestamp, itemsReceived: receivedItems, total: totalReceipt, caraBayar, jatuhTempo
+      id: rcvId,
+      poId: params.poId || '',
+      supplierId: params.supplierId,
+      supplierNama,
+      noFaktur: params.noFaktur,
+      tglFaktur: params.tglFaktur,
+      tglTerima: params.tglTerima,
+      hariTempo: params.hariTempo,
+      tanggal: params.tglTerima ? new Date(params.tglTerima).toISOString() : timestamp,
+      itemsReceived: params.itemsReceived,
+      total: finalTotal,
+      diskonFaktur: params.diskonFaktur || 0,
+      ppnPersen: ppnRate,
+      dpp: afterFakturDisc,
+      totalPPN: ppnAmount,
+      totalGross: grossTotal,
+      caraBayar: params.caraBayar,
+      jatuhTempo: params.jatuhTempo
     };
 
     setReceivingGoods(prev => [...prev, newReceipt]);
-    setPurchaseOrders(prev => prev.map(p => p.id === poId ? { ...p, status: 'diterima' } : p));
+
+    if (params.poId) {
+      setPurchaseOrders(prev => prev.map(p => p.id === params.poId ? { ...p, status: 'diterima' } : p));
+      purchaseOrderService.updateStatus(params.poId, 'diterima').catch(e => console.error('Failed to update PO:', e));
+    }
 
     const newCards: StockCard[] = [];
     setMedicines(prevMeds => prevMeds.map(med => {
-      const received = receivedItems.find(r => r.obatId === med.id);
+      const received = params.itemsReceived.find(r => r.obatId === med.id);
       if (received && received.jumlahDiterima > 0) {
         const oldStok = med.stok;
         const newStok = oldStok + received.jumlahDiterima;
         newCards.push({
-          id: genId('SC'), obatId: med.id, namaObat: med.nama, tanggal: timestamp,
-          tipe: 'masuk', referensiId: rcvId, jumlah: received.jumlahDiterima,
-          stokAwal: oldStok, stokAkhir: newStok, keterangan: `Penerimaan Barang PO ${po.id}`
+          id: genId('SC'),
+          obatId: med.id,
+          namaObat: med.nama,
+          tanggal: timestamp,
+          tipe: 'masuk',
+          referensiId: rcvId,
+          jumlah: received.jumlahDiterima,
+          stokAwal: oldStok,
+          stokAkhir: newStok,
+          keterangan: `Pembelian Faktur ${params.noFaktur || rcvId} (${supplierNama})`
         });
-        return { ...med, stok: newStok, batch: received.batch || med.batch, expiredDate: received.expiredDate || med.expiredDate, hargaBeli: received.hargaBeli || med.hargaBeli };
+        return {
+          ...med,
+          stok: newStok,
+          batch: received.batch || med.batch,
+          expiredDate: received.expiredDate || med.expiredDate,
+          hargaBeli: received.hargaBeli || med.hargaBeli
+        };
       }
       return med;
     }));
 
     // Persist
     receivingGoodsService.add(newReceipt).catch(e => console.error('Failed to save receiving:', e));
-    purchaseOrderService.updateStatus(poId, 'diterima').catch(e => console.error('Failed to update PO:', e));
     if (newCards.length > 0) stockCardService.addMany(newCards).catch(e => console.error('Failed to save stock cards:', e));
 
-    if (caraBayar === 'tunai') {
-      addCashJournalEntry('keluar', 'Pembelian', totalReceipt, `Penerimaan Barang ${rcvId} PO ${poId} - Tunai`);
+    if (params.caraBayar === 'tunai') {
+      addCashJournalEntry('keluar', 'Pembelian', finalTotal, `Pembelian Faktur ${params.noFaktur || rcvId} (${supplierNama}) - Tunai`);
     } else {
       const debtId = genId('DBT');
       const newDebt: SupplierDebt = {
-        id: debtId, supplierId: po.supplierId, supplierNama: po.supplierNama,
-        tanggal: timestamp, referensiId: rcvId, jumlahTotal: totalReceipt, sisaHutang: totalReceipt,
-        jatuhTempo: jatuhTempo || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        id: debtId,
+        supplierId: params.supplierId,
+        supplierNama,
+        tanggal: timestamp,
+        referensiId: rcvId,
+        jumlahTotal: finalTotal,
+        sisaHutang: finalTotal,
+        jatuhTempo: params.jatuhTempo || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
         status: 'belum_lunas'
       };
       setSupplierDebts(prev => [...prev, newDebt]);
       supplierDebtService.add(newDebt).catch(e => console.error('Failed to save debt:', e));
     }
+  };
+
+  const receivePurchaseOrder = (
+    poId: string, receivedItems: ReceivedItem[], caraBayar: 'tunai' | 'kredit', jatuhTempo?: string
+  ) => {
+    const po = purchaseOrders.find(p => p.id === poId);
+    if (!po) return;
+
+    createDirectReceiving({
+      supplierId: po.supplierId,
+      poId,
+      itemsReceived: receivedItems,
+      caraBayar,
+      jatuhTempo,
+      ppnPersen: 11
+    });
   };
 
   // RETURN PURCHASE
@@ -1120,7 +1208,7 @@ export const PharmacyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       addSupplier, updateSupplier, deleteSupplier,
       addCustomer, updateCustomer, deleteCustomer,
       addDoctor, updateDoctor, deleteDoctor,
-      createPurchaseOrder, updatePOStatus, receivePurchaseOrder,
+      createPurchaseOrder, updatePOStatus, receivePurchaseOrder, createDirectReceiving,
       returnPurchase, payDebt,
       checkoutSales, returnSales, cancelSalesTransaction, payCredit,
       addStockOpname, addCashJournalEntry,

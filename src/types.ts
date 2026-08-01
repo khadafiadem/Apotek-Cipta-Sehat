@@ -75,6 +75,10 @@ export interface ReceivedItem {
   batch: string;
   expiredDate: string;
   hargaBeli: number;
+  diskonPersen?: number;
+  diskonRp?: number;
+  ppnPersen?: number;
+  subtotal?: number;
 }
 
 export interface ReceivingGoods {
@@ -82,9 +86,18 @@ export interface ReceivingGoods {
   poId: string;
   supplierId: string;
   supplierNama: string;
+  noFaktur?: string;
+  tglFaktur?: string;
+  tglTerima?: string;
+  hariTempo?: number;
   tanggal: string;
   itemsReceived: ReceivedItem[];
   total: number;
+  diskonFaktur?: number;
+  ppnPersen?: number;
+  dpp?: number;
+  totalPPN?: number;
+  totalGross?: number;
   caraBayar: 'tunai' | 'kredit';
   jatuhTempo?: string; // Jika kredit
 }

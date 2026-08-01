@@ -18,6 +18,7 @@ import {
   Printer,
   X,
   Plus,
+  Trash2,
   FileSpreadsheet,
   ShieldAlert
 } from 'lucide-react';
