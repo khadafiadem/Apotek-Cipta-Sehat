@@ -32,7 +32,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
     { id: 'USR-1', name: 'Ahmad Cipta', role: 'admin', email: 'ahmad@ciptasehat.com', password: 'test' },
     { id: 'USR-2', name: 'Apt. Rahmawati', role: 'apoteker', email: 'rahma@ciptasehat.com', password: 'test' },
     { id: 'USR-3', name: 'Siska Amelia', role: 'kasir', email: 'siska@ciptasehat.com', password: 'test' },
-    { id: 'USR-4', name: 'Mohammad Khadafi', role: 'admin', email: 'Dafi@ciptasehat.com', password: 'test' }
+    { id: 'USR-4', name: 'Mohammad Khadafi', role: 'superadmin', email: 'Dafi@ciptasehat.com', password: 'test' }
   ];
 
   // Load registered users from Supabase
@@ -100,6 +100,8 @@ export default function Login({ onLoginSuccess }: LoginProps) {
 
   const getRoleBadgeStyle = (role: string) => {
     switch (role) {
+      case 'superadmin':
+        return 'bg-purple-500/20 text-purple-300 border-purple-500/30';
       case 'admin':
         return 'bg-emerald-50 text-emerald-700 border-emerald-200';
       case 'apoteker':

@@ -71,7 +71,7 @@ export default function UserManagement() {
     { id: 'USR-1', name: 'Ahmad Cipta', role: 'admin', email: 'ahmad@ciptasehat.com', password: 'test' },
     { id: 'USR-2', name: 'Apt. Rahmawati', role: 'apoteker', email: 'rahma@ciptasehat.com', password: 'test' },
     { id: 'USR-3', name: 'Siska Amelia', role: 'kasir', email: 'siska@ciptasehat.com', password: 'test' },
-    { id: 'USR-4', name: 'Mohammad Khadafi', role: 'admin', email: 'Dafi@ciptasehat.com', password: 'test' }
+    { id: 'USR-4', name: 'Mohammad Khadafi', role: 'superadmin', email: 'Dafi@ciptasehat.com', password: 'test' }
   ];
 
   const saveUsers = (updatedUsers: User[]) => {
@@ -191,6 +191,8 @@ export default function UserManagement() {
 
   const getRoleBadgeStyle = (role: string) => {
     switch (role) {
+      case 'superadmin':
+        return 'bg-purple-50 text-purple-700 border-purple-200';
       case 'admin':
         return 'bg-emerald-50 text-emerald-700 border-emerald-200';
       case 'apoteker':
@@ -204,8 +206,10 @@ export default function UserManagement() {
 
   const getRoleDescription = (role: string) => {
     switch (role) {
+      case 'superadmin':
+        return 'Hak akses tertinggi. Berhak melakukan pembatalan/void transaksi, hapus seluruh data obat, import batch data obat, serta seluruh fitur admin.';
       case 'admin':
-        return 'Hak akses penuh ke semua modul sistem termasuk konfigurasi, database, data master, POS, PO, dan penyesuaian hak akses.';
+        return 'Hak akses penuh ke semua modul sistem termasuk konfigurasi, database, data master, POS, PO, dan laporan keuangan.';
       case 'apoteker':
         return 'Akses operasional klinis, mengelola resep dokter, merancang purchase order (PO) pengadaan, mengaudit stok fisik, dan analisis rugi laba.';
       case 'kasir':
@@ -234,8 +238,8 @@ export default function UserManagement() {
       </div>
 
       {/* ACTIVE ROLE EXPLANATION / BANNER */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {['admin', 'apoteker', 'kasir'].map((role) => {
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {['superadmin', 'admin', 'apoteker', 'kasir'].map((role) => {
           const isActive = currentRole === role;
           return (
             <div
@@ -243,7 +247,7 @@ export default function UserManagement() {
               onClick={() => handleSwitchSession(role as UserRole)}
               className={`p-5 rounded-2xl border transition-all cursor-pointer relative flex flex-col justify-between ${
                 isActive
-                  ? 'bg-emerald-500 text-white border-emerald-600 shadow-md shadow-emerald-500/10'
+                  ? role === 'superadmin' ? 'bg-purple-600 text-white border-purple-700 shadow-md shadow-purple-500/10' : 'bg-emerald-500 text-white border-emerald-600 shadow-md shadow-emerald-500/10'
                   : 'bg-white text-slate-800 border-slate-100 hover:border-slate-200 shadow-2xs'
               }`}
             >
@@ -257,7 +261,7 @@ export default function UserManagement() {
                   {isActive && <UserCheck className="w-4 h-4 text-white" />}
                 </div>
                 <h3 className="text-sm font-bold mt-3 capitalize">
-                  {role === 'admin' ? 'Super Admin' : role === 'apoteker' ? 'Apoteker Penanggung Jawab' : 'Staff Kasir'}
+                  {role === 'superadmin' ? 'Super Admin' : role === 'admin' ? 'Administrator' : role === 'apoteker' ? 'Apoteker PJ' : 'Staff Kasir'}
                 </h3>
                 <p className={`text-[11px] mt-1 line-clamp-3 ${isActive ? 'text-white/80' : 'text-slate-400'}`}>
                   {getRoleDescription(role)}
@@ -297,8 +301,9 @@ export default function UserManagement() {
               className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-xs font-bold text-slate-700 focus:outline-hidden focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-500 shadow-2xs"
             >
               <option value="semua">Semua Peran</option>
+              <option value="superadmin">Super Admin</option>
               <option value="admin">Administrator (Admin)</option>
-              <option value="apoteker">Apoteker</option>
+              <option value="apoteker">Apoteker PJ</option>
               <option value="kasir">Staff Kasir</option>
             </select>
           </div>
@@ -494,7 +499,8 @@ export default function UserManagement() {
                   onChange={(e) => setFormData({ ...formData, role: e.target.value as UserRole })}
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-xs font-bold text-slate-700 focus:outline-hidden focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-500 shadow-3xs"
                 >
-                  <option value="admin">Administrator (Full Access)</option>
+                  <option value="superadmin">Super Admin (Pembatalan TX, Batch Import & Hapus Data)</option>
+                  <option value="admin">Administrator (Full System Access)</option>
                   <option value="apoteker">Apoteker (Operational & Clinical)</option>
                   <option value="kasir">Staff Kasir (Sales POS Only)</option>
                 </select>

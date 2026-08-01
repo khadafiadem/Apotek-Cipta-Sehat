@@ -126,7 +126,7 @@ function MainAppShell() {
     { id: 'USR-1', name: 'Ahmad Cipta', role: 'admin' as const, email: 'ahmad@ciptasehat.com', password: 'test' },
     { id: 'USR-2', name: 'Apt. Rahmawati', role: 'apoteker' as const, email: 'rahma@ciptasehat.com', password: 'test' },
     { id: 'USR-3', name: 'Siska Amelia', role: 'kasir' as const, email: 'siska@ciptasehat.com', password: 'test' },
-    { id: 'USR-4', name: 'Mohammad Khadafi', role: 'admin' as const, email: 'Dafi@ciptasehat.com', password: 'test' }
+    { id: 'USR-4', name: 'Mohammad Khadafi', role: 'superadmin' as const, email: 'Dafi@ciptasehat.com', password: 'test' }
   ];
 
   const handleLoginSuccess = (user: User) => {
@@ -147,7 +147,7 @@ function MainAppShell() {
 
   const getActiveUserName = () => {
     const user = allUsers.find(u => u.role === currentRole);
-    return user ? user.name : (currentRole === 'admin' ? 'Super Admin' : currentRole);
+    return user ? user.name : (currentRole === 'superadmin' ? 'Super Admin' : currentRole === 'admin' ? 'Administrator' : currentRole);
   };
 
   // States for cross-module prepopulate suggestions
@@ -222,10 +222,12 @@ function MainAppShell() {
 
   const getRoleBadgeStyle = (role: string) => {
     switch (role) {
+      case 'superadmin':
+        return 'bg-purple-500/10 text-purple-400 border-purple-500/20';
       case 'admin':
         return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
       case 'apoteker':
-        return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
+        return 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20';
       case 'kasir':
         return 'bg-amber-500/10 text-amber-400 border-amber-500/20';
       default:
@@ -269,7 +271,7 @@ function MainAppShell() {
             <div className="min-w-0">
               <p className="text-sm font-semibold text-white capitalize truncate">{getActiveUserName()}</p>
               <span className={`inline-block text-[9px] px-2 py-0.5 rounded border font-bold uppercase mt-1 ${getRoleBadgeStyle(currentRole)}`}>
-                {currentRole === 'admin' ? 'Superadmin' : currentRole.toUpperCase()}
+                {currentRole === 'superadmin' ? 'Super Admin' : currentRole === 'admin' ? 'Administrator' : currentRole.toUpperCase()}
               </span>
             </div>
           </div>

@@ -79,7 +79,7 @@ interface PharmacyContextType {
   ) => Promise<{ success: boolean; count: number; error?: string }>;
   updateMedicine: (id: string, med: Partial<Medicine>) => void;
   deleteMedicine: (id: string) => void;
-  clearAllMedicines: () => Promise<void>;
+  clearAllMedicines: () => Promise<{ success: boolean; error?: string }>;
 
   addSupplier: (sup: Omit<Supplier, 'id'>) => void;
   updateSupplier: (id: string, sup: Partial<Supplier>) => void;
@@ -117,6 +117,7 @@ interface PharmacyContextType {
     resepDetail?: string;
   }) => { success: boolean; error?: string; txId?: string };
   returnSales: (salesId: string, items: { obatId: string; jumlah: number }[], alasan: string) => void;
+  cancelSalesTransaction: (salesId: string, alasan: string) => Promise<{ success: boolean; error?: string }>;
   payCredit: (creditId: string, jumlahBayar: number) => void;
 
   addStockOpname: (oleh: string, items: { obatId: string; stokFisik: number; keterangan: string }[]) => void;
@@ -392,6 +393,9 @@ export const PharmacyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     newMedsList: Omit<Medicine, 'id'>[],
     onProgress?: (current: number, total: number) => void
   ): Promise<{ success: boolean; count: number; error?: string }> => {
+    if (currentRole !== 'superadmin') {
+      return { success: false, count: 0, error: 'Akses Ditolak: Hanya Super Admin yang diizinkan mengimport batch data obat.' };
+    }
     try {
       const generatedMeds: Medicine[] = [];
       const generatedCards: StockCard[] = [];
@@ -482,12 +486,17 @@ export const PharmacyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     medicineService.delete(id).catch(e => console.error('Failed to delete medicine:', e));
   };
 
-  const clearAllMedicines = async (): Promise<void> => {
+  const clearAllMedicines = async (): Promise<{ success: boolean; error?: string }> => {
+    if (currentRole !== 'superadmin') {
+      return { success: false, error: 'Akses Ditolak: Hanya Super Admin yang diizinkan menghapus seluruh data obat.' };
+    }
     setMedicines([]);
     try {
       await medicineService.deleteAll();
+      return { success: true };
     } catch (e) {
       console.error('Failed to clear medicines:', e);
+      return { success: false, error: (e as Error).message };
     }
   };
 
@@ -817,6 +826,83 @@ export const PharmacyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     addCashJournalEntry('keluar', 'Retur', totalRefund, `Retur Penjualan Kasir ${retId} - Refund`);
   };
 
+  // CANCEL SALES TRANSACTION (Super Admin privilege)
+  const cancelSalesTransaction = async (
+    salesId: string,
+    alasan: string
+  ): Promise<{ success: boolean; error?: string }> => {
+    if (currentRole !== 'superadmin') {
+      return { success: false, error: 'Akses Ditolak: Pembatalan transaksi hanya diizinkan untuk Super Admin.' };
+    }
+
+    const tx = salesTransactions.find(t => t.id === salesId);
+    if (!tx) {
+      return { success: false, error: 'Transaksi tidak ditemukan.' };
+    }
+
+    const timestamp = new Date().toISOString();
+    const newCards: StockCard[] = [];
+
+    // Restoring stock for all sold medicines / compound ingredients
+    setMedicines(prevMeds => prevMeds.map(med => {
+      let returnQty = 0;
+      const singleItem = tx.items.find(i => !i.isRacikan && i.obatId === med.id);
+      if (singleItem) returnQty += singleItem.jumlah;
+
+      tx.items.forEach(item => {
+        if (item.isRacikan && item.racikanIngredients) {
+          const ing = item.racikanIngredients.find(g => g.obatId === med.id);
+          if (ing) returnQty += ing.jumlah * item.jumlah;
+        }
+      });
+
+      if (returnQty > 0) {
+        const oldStok = med.stok;
+        const newStok = oldStok + returnQty;
+        newCards.push({
+          id: genId('SC'),
+          obatId: med.id,
+          namaObat: med.nama,
+          tanggal: timestamp,
+          tipe: 'retur_jual',
+          referensiId: salesId,
+          jumlah: returnQty,
+          stokAwal: oldStok,
+          stokAkhir: newStok,
+          keterangan: `Pembatalan Transaksi ${salesId} (Super Admin) - ${alasan}`
+        });
+        medicineService.update(med.id, { stok: newStok }).catch(e => console.error('Failed to update stock:', e));
+        return { ...med, stok: newStok };
+      }
+      return med;
+    }));
+
+    if (newCards.length > 0) {
+      stockCardService.addMany(newCards).catch(e => console.error('Failed to save stock cards:', e));
+    }
+
+    // Reverse Financial Journal / Credit
+    if (tx.caraBayar !== 'kredit') {
+      addCashJournalEntry('keluar', 'Retur', tx.total, `Pembatalan Transaksi ${salesId} - ${alasan}`);
+    } else if (tx.customerId) {
+      setCustomers(prevCust => prevCust.map(c => c.id === tx.customerId ? { ...c, piutang: Math.max(0, c.piutang - tx.total) } : c));
+      customerService.update(tx.customerId, {}).catch(e => console.error('Failed to update customer:', e));
+
+      setCustomerCredits(prevCredits => prevCredits.map(cred => {
+        if (cred.salesId === salesId) {
+          return { ...cred, sisaPiutang: 0, status: 'lunas' };
+        }
+        return cred;
+      }));
+    }
+
+    // Delete transaction from state & Supabase
+    setSalesTransactions(prev => prev.filter(t => t.id !== salesId));
+    salesTransactionService.delete(salesId).catch(e => console.error('Failed to delete transaction:', e));
+
+    return { success: true };
+  };
+
   // PAY CREDIT
   const payCredit = (creditId: string, jumlahBayar: number) => {
     const timestamp = new Date().toISOString();
@@ -995,7 +1081,7 @@ export const PharmacyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       addDoctor, updateDoctor, deleteDoctor,
       createPurchaseOrder, updatePOStatus, receivePurchaseOrder,
       returnPurchase, payDebt,
-      checkoutSales, returnSales, payCredit,
+      checkoutSales, returnSales, cancelSalesTransaction, payCredit,
       addStockOpname, addCashJournalEntry,
       exportDatabase, importDatabase, resetDatabase, syncToSupabase
     }}>

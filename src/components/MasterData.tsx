@@ -227,21 +227,41 @@ export default function MasterData() {
               <>
                 {medicines.length > 0 && (
                   <button
-                    onClick={() => setShowDeleteAllConfirm(true)}
-                    className="flex items-center gap-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 px-3.5 py-2.5 rounded-xl font-bold text-xs transition-colors shadow-sm cursor-pointer"
-                    title="Hapus seluruh data obat dari database untuk upload ulang"
+                    onClick={() => {
+                      if (currentRole !== 'superadmin') {
+                        alert('Akses Ditolak: Menghapus seluruh data obat hanya diizinkan untuk Super Admin.');
+                        return;
+                      }
+                      setShowDeleteAllConfirm(true);
+                    }}
+                    className={`flex items-center gap-2 border px-3.5 py-2.5 rounded-xl font-bold text-xs transition-colors shadow-sm cursor-pointer ${
+                      currentRole === 'superadmin' 
+                        ? 'bg-rose-50 hover:bg-rose-100 text-rose-700 border-rose-200' 
+                        : 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
+                    }`}
+                    title={currentRole === 'superadmin' ? 'Hapus seluruh data obat dari database untuk upload ulang' : 'Khusus Super Admin'}
                   >
                     <Trash2 className="w-3.5 h-3.5 text-rose-600" />
                     <span>Kosongkan Semua Data ({medicines.length})</span>
                   </button>
                 )}
                 <button
-                  onClick={() => setShowBatchModal(true)}
-                  className="flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white px-4 py-2.5 rounded-xl font-bold text-sm transition-colors shadow-sm cursor-pointer"
+                  onClick={() => {
+                    if (currentRole !== 'superadmin') {
+                      alert('Akses Ditolak: Fitur import batch obat hanya diizinkan untuk Super Admin.');
+                      return;
+                    }
+                    setShowBatchModal(true);
+                  }}
+                  className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm transition-colors shadow-sm cursor-pointer ${
+                    currentRole === 'superadmin'
+                      ? 'bg-purple-900 hover:bg-purple-800 text-white'
+                      : 'bg-slate-800 text-slate-300'
+                  }`}
                 >
                   <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
                   <span>Import Batch Data Obat</span>
-                  <span className="bg-emerald-500/20 text-emerald-300 text-[10px] px-2 py-0.5 rounded-md font-extrabold tracking-wider uppercase border border-emerald-500/30 hidden sm:inline">
+                  <span className="bg-purple-500/30 text-purple-200 text-[10px] px-2 py-0.5 rounded-md font-extrabold tracking-wider uppercase border border-purple-400/30 hidden sm:inline">
                     Khusus Super Admin
                   </span>
                 </button>

@@ -68,8 +68,13 @@ interface LaporanMenuProps {
 }
 
 export default function LaporanMenu({ setActiveTab, setPOItemsPrepopulate }: LaporanMenuProps) {
-  const { medicines, salesTransactions, receivingGoods } = usePharmacy();
+  const { currentRole, medicines, salesTransactions, receivingGoods, cancelSalesTransaction } = usePharmacy();
   const [activeSubMenu, setActiveSubMenu] = useState<'penjualan' | 'pembelian' | 'expired' | 'mau_habis'>('penjualan');
+
+  // Cancellation Modal State (Super Admin)
+  const [cancelTxModal, setCancelTxModal] = useState<SalesTransaction | null>(null);
+  const [cancelReason, setCancelReason] = useState('');
+  const [isCancelling, setIsCancelling] = useState(false);
 
   // Search and Filter States for Sales (Penjualan)
   const [salesSearch, setSalesSearch] = useState('');
@@ -680,13 +685,28 @@ export default function LaporanMenu({ setActiveTab, setPOItemsPrepopulate }: Lap
                           Rp {tx.total.toLocaleString('id-ID')}
                         </td>
                         <td className="py-4 px-6 text-center">
-                          <button
-                            onClick={() => setSelectedSalesTx(tx)}
-                            className="bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-800 p-1.5 rounded-lg transition-colors inline-flex items-center gap-1"
-                          >
-                            <Eye className="w-3.5 h-3.5" />
-                            <span className="text-[10px] font-bold px-0.5">Detail</span>
-                          </button>
+                          <div className="flex items-center justify-center gap-1">
+                            <button
+                              onClick={() => setSelectedSalesTx(tx)}
+                              className="bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-800 p-1.5 rounded-lg transition-colors inline-flex items-center gap-1"
+                            >
+                              <Eye className="w-3.5 h-3.5" />
+                              <span className="text-[10px] font-bold px-0.5">Detail</span>
+                            </button>
+                            {currentRole === 'superadmin' && (
+                              <button
+                                onClick={() => {
+                                  setCancelTxModal(tx);
+                                  setCancelReason('');
+                                }}
+                                className="bg-rose-50 hover:bg-rose-100 text-rose-600 hover:text-rose-800 p-1.5 rounded-lg transition-colors inline-flex items-center gap-1 border border-rose-100 cursor-pointer"
+                                title="Batalkan Transaksi (Khusus Super Admin)"
+                              >
+                                <X className="w-3.5 h-3.5 text-rose-600" />
+                                <span className="text-[10px] font-bold px-0.5">Void</span>
+                              </button>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     ))
@@ -1475,13 +1495,27 @@ export default function LaporanMenu({ setActiveTab, setPOItemsPrepopulate }: Lap
             </div>
 
             <div className="bg-slate-50 border-t border-slate-100 px-6 py-4 flex items-center justify-between">
-              <button
-                onClick={() => alert('Cetak struk belanja kasir disimulasikan.')}
-                className="bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs px-4 py-2 rounded-xl flex items-center gap-2 transition-all shadow-3xs"
-              >
-                <Printer className="w-3.5 h-3.5" />
-                <span>Cetak Nota</span>
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => alert('Cetak struk belanja kasir disimulasikan.')}
+                  className="bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs px-4 py-2 rounded-xl flex items-center gap-2 transition-all shadow-3xs"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  <span>Cetak Nota</span>
+                </button>
+                {currentRole === 'superadmin' && (
+                  <button
+                    onClick={() => {
+                      setCancelTxModal(selectedSalesTx);
+                      setCancelReason('');
+                    }}
+                    className="bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs px-4 py-2 rounded-xl flex items-center gap-2 transition-all shadow-3xs cursor-pointer"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                    <span>Void / Batalkan Transaksi</span>
+                  </button>
+                )}
+              </div>
               <button
                 type="button"
                 onClick={() => setSelectedSalesTx(null)}
@@ -1598,6 +1632,80 @@ export default function LaporanMenu({ setActiveTab, setPOItemsPrepopulate }: Lap
                 className="bg-white hover:bg-slate-100 text-slate-600 border border-slate-200 rounded-xl px-4 py-2 text-xs font-bold transition-all shadow-3xs"
               >
                 Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 3. Void / Cancel Transaction Modal (Super Admin) */}
+      {cancelTxModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fadeIn">
+          <div className="bg-white rounded-3xl max-w-md w-full shadow-2xl overflow-hidden border border-rose-100 p-6 space-y-4">
+            <div className="flex items-center gap-3 text-rose-600">
+              <div className="w-12 h-12 rounded-2xl bg-rose-100 flex items-center justify-center shrink-0">
+                <Trash2 className="w-6 h-6 text-rose-600" />
+              </div>
+              <div>
+                <h3 className="text-lg font-extrabold text-slate-900">Pembatalan (Void) Transaksi</h3>
+                <p className="text-xs text-slate-500 font-mono">{cancelTxModal.id}</p>
+              </div>
+            </div>
+
+            <div className="bg-rose-50/70 border border-rose-200/80 rounded-2xl p-4 text-xs text-rose-900 leading-relaxed space-y-2">
+              <p>
+                Anda akan membatalkan transaksi bernominal <strong>Rp {cancelTxModal.total.toLocaleString('id-ID')}</strong>.
+              </p>
+              <ul className="list-disc list-inside text-[11px] text-rose-800 space-y-1">
+                <li>Stok obat yang terjual akan dikembalikan secara otomatis ke database.</li>
+                <li>Jurnal penerimaan kas/keuangan akan dibatalkan/di-reverse.</li>
+                <li>Sistem mencatat rekap retur pembatalan secara otomatis.</li>
+              </ul>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-slate-500 uppercase">Alasan Pembatalan (Wajib)</label>
+              <textarea
+                rows={2}
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+                placeholder="Contoh: Kesalahan input kasir / pembatalan oleh pelanggan..."
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs font-medium focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500"
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setCancelTxModal(null)}
+                disabled={isCancelling}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 cursor-pointer"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                disabled={isCancelling || !cancelReason.trim()}
+                onClick={async () => {
+                  setIsCancelling(true);
+                  try {
+                    const res = await cancelSalesTransaction(cancelTxModal.id, cancelReason.trim());
+                    if (res.success) {
+                      alert('Transaksi berhasil dibatalkan dan stok obat telah dikembalikan.');
+                      setCancelTxModal(null);
+                      setSelectedSalesTx(null);
+                    } else {
+                      alert('Gagal membatalkan transaksi: ' + res.error);
+                    }
+                  } catch (err) {
+                    alert('Terjadi kesalahan: ' + (err as Error).message);
+                  } finally {
+                    setIsCancelling(false);
+                  }
+                }}
+                className="px-5 py-2 rounded-xl text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 shadow-md flex items-center gap-2 disabled:opacity-50 cursor-pointer"
+              >
+                {isCancelling ? 'Memproses...' : 'Konfirmasi Void Transaksi'}
               </button>
             </div>
           </div>
