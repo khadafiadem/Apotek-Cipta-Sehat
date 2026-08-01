@@ -1145,11 +1145,38 @@ export default function PurchaseModule({ poItemsPrepopulate, clearPOItemsPrepopu
               )}
             </div>
 
+            {/* Dynamic Form Validation Status Banner */}
+            {(!recvSupplierId || !recvNoFaktur.trim() || recvItems.length === 0) && (
+              <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs space-y-1.5">
+                <p className="font-bold text-amber-900 flex items-center gap-1.5">
+                  <AlertCircle className="w-4 h-4 text-amber-600" />
+                  <span>Lengkapi Syarat Berikut Agar Transaksi Dapat Diselesaikan:</span>
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[11px] pt-1">
+                  <div className={`p-2 rounded-lg border font-semibold flex items-center gap-1.5 ${recvSupplierId ? 'bg-emerald-50 text-emerald-800 border-emerald-200' : 'bg-white text-amber-800 border-amber-200'}`}>
+                    <span>{recvSupplierId ? '✓' : '⚠️'}</span>
+                    <span>1. Distributor: {recvSupplierId ? 'Sudah Dipilih' : 'Belum Dipilih'}</span>
+                  </div>
+                  <div className={`p-2 rounded-lg border font-semibold flex items-center gap-1.5 ${recvNoFaktur.trim() ? 'bg-emerald-50 text-emerald-800 border-emerald-200' : 'bg-white text-amber-800 border-amber-200'}`}>
+                    <span>{recvNoFaktur.trim() ? '✓' : '⚠️'}</span>
+                    <span>2. No. Faktur: {recvNoFaktur.trim() ? 'Sudah Diisi' : 'Belum Diisi'}</span>
+                  </div>
+                  <div className={`p-2 rounded-lg border font-semibold flex items-center gap-1.5 ${recvItems.length > 0 ? 'bg-emerald-50 text-emerald-800 border-emerald-200' : 'bg-white text-amber-800 border-amber-200'}`}>
+                    <span>{recvItems.length > 0 ? '✓' : '⚠️'}</span>
+                    <span>3. Item Barang: {recvItems.length > 0 ? `${recvItems.length} Item Added` : 'Klik "+ Tambah Item"'}</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Final Submit Button */}
             <button
               type="submit"
-              disabled={!recvSupplierId || !recvNoFaktur.trim() || recvItems.length === 0}
-              className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-200 disabled:text-gray-400 text-white p-3.5 rounded-xl text-sm font-extrabold transition-all flex items-center justify-center gap-2 shadow-sm"
+              className={`w-full p-3.5 rounded-xl text-sm font-extrabold transition-all flex items-center justify-center gap-2 shadow-sm ${
+                recvSupplierId && recvNoFaktur.trim() && recvItems.length > 0
+                  ? 'bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer ring-2 ring-emerald-500/20'
+                  : 'bg-amber-600 hover:bg-amber-700 text-white cursor-pointer'
+              }`}
             >
               <CheckCircle className="w-5 h-5" />
               <span>Selesaikan & Masukkan Gudang Apotek</span>
