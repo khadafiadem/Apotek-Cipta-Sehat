@@ -13,6 +13,7 @@ import StockInventory from './components/StockInventory';
 import ReportsAnalytics from './components/ReportsAnalytics';
 import SettingsBackup from './components/SettingsBackup';
 import LaporanMenu from './components/LaporanMenu';
+import PembatalanTransaksi from './components/PembatalanTransaksi';
 import UserManagement from './components/UserManagement';
 import Login from './components/Login';
 import { User } from './types';
@@ -33,6 +34,7 @@ import {
   Clock,
   Briefcase,
   ClipboardList,
+  ShieldAlert,
   Users,
   LogOut
 } from 'lucide-react';
@@ -176,6 +178,7 @@ function MainAppShell() {
     { id: 'inventory', label: 'Stok & Opname', icon: Package, badge: lowStockCount > 0 ? `${lowStockCount}!` : undefined, badgeColor: 'bg-rose-500' },
     { id: 'reports', label: 'Keuangan & Jurnal', icon: PieChart },
     { id: 'laporan', label: 'Menu Laporan', icon: ClipboardList },
+    ...(currentRole === 'superadmin' ? [{ id: 'pembatalan', label: 'Pembatalan Transaksi', icon: ShieldAlert, badge: 'SuperAdmin', badgeColor: 'bg-purple-600' }] : []),
     { id: 'user', label: 'User', icon: Users },
     { id: 'settings', label: 'Pengaturan & Backup', icon: Settings }
   ];
@@ -211,6 +214,8 @@ function MainAppShell() {
             setPOItemsPrepopulate={handleSetPOItemsPrepopulate}
           />
         );
+      case 'pembatalan':
+        return <PembatalanTransaksi />;
       case 'user':
         return <UserManagement />;
       case 'settings':

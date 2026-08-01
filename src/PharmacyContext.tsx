@@ -64,6 +64,7 @@ interface PharmacyContextType {
   supplierDebts: SupplierDebt[];
   debtPayments: DebtPayment[];
   salesTransactions: SalesTransaction[];
+  cancelledTransactions: CancelledTransaction[];
   salesReturns: ReturnSales[];
   customerCredits: CustomerCredit[];
   creditPayments: CreditPayment[];
@@ -286,6 +287,23 @@ export const PharmacyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [debtPayments, setDebtPayments] = useState<DebtPayment[]>([]);
 
   const [salesTransactions, setSalesTransactions] = useState<SalesTransaction[]>([]);
+  const [cancelledTransactions, setCancelledTransactions] = useState<CancelledTransaction[]>(() => {
+    try {
+      const saved = localStorage.getItem('acs_cancelled_transactions');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('acs_cancelled_transactions', JSON.stringify(cancelledTransactions));
+    } catch (e) {
+      console.error('Failed to save cancelled transactions:', e);
+    }
+  }, [cancelledTransactions]);
+
   const [salesReturns, setSalesReturns] = useState<ReturnSales[]>([]);
   const [customerCredits, setCustomerCredits] = useState<CustomerCredit[]>([]);
   const [creditPayments, setCreditPayments] = useState<CreditPayment[]>([]);
@@ -896,6 +914,22 @@ export const PharmacyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       }));
     }
 
+    // Save to Cancelled Transactions Log
+    const cancelledLog: CancelledTransaction = {
+      id: genId('VOID'),
+      salesId: tx.id,
+      tanggalTransaksi: tx.tanggal,
+      tanggalPembatalan: timestamp,
+      kasirName: tx.kasirName,
+      customerName: tx.customerName,
+      total: tx.total,
+      caraBayar: tx.caraBayar,
+      dibatalkanOleh: loggedInUser?.name || 'Super Admin',
+      alasan: alasan,
+      items: tx.items
+    };
+    setCancelledTransactions(prev => [cancelledLog, ...prev]);
+
     // Delete transaction from state & Supabase
     setSalesTransactions(prev => prev.filter(t => t.id !== salesId));
     salesTransactionService.delete(salesId).catch(e => console.error('Failed to delete transaction:', e));
@@ -1072,7 +1106,7 @@ export const PharmacyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       currentRole, setRole, loggedInUser, setLoggedInUser, loading,
       medicines, suppliers, customers, doctors,
       purchaseOrders, receivingGoods, returnPurchases, supplierDebts, debtPayments,
-      salesTransactions, salesReturns, customerCredits, creditPayments,
+      salesTransactions, cancelledTransactions, salesReturns, customerCredits, creditPayments,
       stockCards, stockOpnames, cashJournal,
 
       addMedicine, importMedicinesBatch, updateMedicine, deleteMedicine, clearAllMedicines,

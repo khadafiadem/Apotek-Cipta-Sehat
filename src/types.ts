@@ -176,6 +176,20 @@ export interface ReturnSales {
   alasan: string;
 }
 
+export interface CancelledTransaction {
+  id: string;
+  salesId: string;
+  tanggalTransaksi: string;
+  tanggalPembatalan: string;
+  kasirName: string;
+  customerName: string;
+  total: number;
+  caraBayar: string;
+  dibatalkanOleh: string;
+  alasan: string;
+  items: SalesItem[];
+}
+
 export interface CustomerCredit {
   id: string;
   customerId: string;
