@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { usePharmacy } from '../PharmacyContext';
 import { Medicine, SalesTransaction, ReceivingGoods } from '../types';
+import PembatalanTransaksi from './PembatalanTransaksi';
 import * as XLSX from 'xlsx';
 import {
   FileText,
@@ -17,7 +18,8 @@ import {
   Printer,
   X,
   Plus,
-  FileSpreadsheet
+  FileSpreadsheet,
+  ShieldAlert
 } from 'lucide-react';
 
 // Jakarta Time utility functions
@@ -69,7 +71,7 @@ interface LaporanMenuProps {
 
 export default function LaporanMenu({ setActiveTab, setPOItemsPrepopulate }: LaporanMenuProps) {
   const { currentRole, medicines, salesTransactions, receivingGoods, cancelSalesTransaction } = usePharmacy();
-  const [activeSubMenu, setActiveSubMenu] = useState<'penjualan' | 'pembelian' | 'expired' | 'mau_habis'>('penjualan');
+  const [activeSubMenu, setActiveSubMenu] = useState<'penjualan' | 'pembelian' | 'expired' | 'mau_habis' | 'pembatalan'>('penjualan');
 
   // Cancellation Modal State (Super Admin)
   const [cancelTxModal, setCancelTxModal] = useState<SalesTransaction | null>(null);
@@ -382,7 +384,7 @@ export default function LaporanMenu({ setActiveTab, setPOItemsPrepopulate }: Lap
       </div>
 
       {/* SUB MENU NAVIGATION TABS */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 bg-slate-100 p-1.5 rounded-2xl border border-slate-200/50">
+      <div className={`grid grid-cols-2 ${currentRole === 'superadmin' ? 'lg:grid-cols-5' : 'lg:grid-cols-4'} gap-2 bg-slate-100 p-1.5 rounded-2xl border border-slate-200/50`}>
         <button
           onClick={() => setActiveSubMenu('penjualan')}
           className={`flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-xs font-bold transition-all ${
@@ -440,6 +442,23 @@ export default function LaporanMenu({ setActiveTab, setPOItemsPrepopulate }: Lap
             </span>
           )}
         </button>
+
+        {currentRole === 'superadmin' && (
+          <button
+            onClick={() => setActiveSubMenu('pembatalan')}
+            className={`flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-xs font-bold transition-all ${
+              activeSubMenu === 'pembatalan'
+                ? 'bg-purple-600 text-white shadow-sm'
+                : 'text-purple-700 hover:bg-purple-100/60 bg-purple-50/60 border border-purple-200/50'
+            }`}
+          >
+            <ShieldAlert className="w-4 h-4 text-purple-600" />
+            <span>Pembatalan Transaksi</span>
+            <span className="bg-purple-500/20 text-purple-800 text-[9px] px-1.5 py-0.5 rounded font-extrabold uppercase hidden xl:inline">
+              Super Admin
+            </span>
+          </button>
+        )}
       </div>
 
       {/* ──────────────────────────────────────────────────────────────────────── */}
@@ -1392,6 +1411,13 @@ export default function LaporanMenu({ setActiveTab, setPOItemsPrepopulate }: Lap
             </div>
           </div>
         </div>
+      )}
+
+      {/* ──────────────────────────────────────────────────────────────────────── */}
+      {/* 5. VIEW CONTENT: PEMBATALAN TRANSAKSI (SUPER ADMIN) */}
+      {/* ──────────────────────────────────────────────────────────────────────── */}
+      {activeSubMenu === 'pembatalan' && (
+        <PembatalanTransaksi />
       )}
 
       {/* ──────────────────────────────────────────────────────────────────────── */}
