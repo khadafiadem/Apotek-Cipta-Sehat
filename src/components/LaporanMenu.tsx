@@ -384,7 +384,7 @@ export default function LaporanMenu({ setActiveTab, setPOItemsPrepopulate }: Lap
       </div>
 
       {/* SUB MENU NAVIGATION TABS */}
-      <div className={`grid grid-cols-2 ${currentRole === 'superadmin' ? 'lg:grid-cols-5' : 'lg:grid-cols-4'} gap-2 bg-slate-100 p-1.5 rounded-2xl border border-slate-200/50`}>
+      <div className={`grid grid-cols-2 ${currentRole === 'superadmin' || currentRole === 'admin' ? 'lg:grid-cols-5' : 'lg:grid-cols-4'} gap-2 bg-slate-100 p-1.5 rounded-2xl border border-slate-200/50`}>
         <button
           onClick={() => setActiveSubMenu('penjualan')}
           className={`flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-xs font-bold transition-all ${
@@ -443,7 +443,7 @@ export default function LaporanMenu({ setActiveTab, setPOItemsPrepopulate }: Lap
           )}
         </button>
 
-        {currentRole === 'superadmin' && (
+        {(currentRole === 'superadmin' || currentRole === 'admin') && (
           <button
             onClick={() => setActiveSubMenu('pembatalan')}
             className={`flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-xs font-bold transition-all ${
@@ -712,7 +712,7 @@ export default function LaporanMenu({ setActiveTab, setPOItemsPrepopulate }: Lap
                               <Eye className="w-3.5 h-3.5" />
                               <span className="text-[10px] font-bold px-0.5">Detail</span>
                             </button>
-                            {currentRole === 'superadmin' && (
+                            {(currentRole === 'superadmin' || currentRole === 'admin') && (
                               <button
                                 onClick={() => {
                                   setCancelTxModal(tx);
@@ -1529,7 +1529,7 @@ export default function LaporanMenu({ setActiveTab, setPOItemsPrepopulate }: Lap
                   <Printer className="w-3.5 h-3.5" />
                   <span>Cetak Nota</span>
                 </button>
-                {currentRole === 'superadmin' && (
+                {(currentRole === 'superadmin' || currentRole === 'admin') && (
                   <button
                     onClick={() => {
                       setCancelTxModal(selectedSalesTx);

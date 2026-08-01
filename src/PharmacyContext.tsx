@@ -271,7 +271,7 @@ const INITIAL_STOCK_CARDS: StockCard[] = [
 ];
 
 export const PharmacyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [currentRole, setRoleState] = useState<UserRole>('admin');
+  const [currentRole, setRoleState] = useState<UserRole>('superadmin');
   const [loggedInUser, setLoggedInUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 

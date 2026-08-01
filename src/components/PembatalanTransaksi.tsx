@@ -81,7 +81,7 @@ export default function PembatalanTransaksi() {
   });
 
   // Access check
-  if (currentRole !== 'superadmin') {
+  if (currentRole !== 'superadmin' && currentRole !== 'admin') {
     return (
       <div className="p-8 max-w-4xl mx-auto text-center space-y-4">
         <div className="w-16 h-16 bg-rose-100 rounded-full flex items-center justify-center mx-auto text-rose-600">
