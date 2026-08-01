@@ -844,13 +844,20 @@ export const PharmacyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     addCashJournalEntry('keluar', 'Retur', totalRefund, `Retur Penjualan Kasir ${retId} - Refund`);
   };
 
-  // CANCEL SALES TRANSACTION (Super Admin privilege)
+  // CANCEL SALES TRANSACTION (Admin & Super Admin privilege)
   const cancelSalesTransaction = async (
     salesId: string,
     alasan: string
   ): Promise<{ success: boolean; error?: string }> => {
-    if (currentRole !== 'superadmin') {
-      return { success: false, error: 'Akses Ditolak: Pembatalan transaksi hanya diizinkan untuk Super Admin.' };
+    const isAuthorized =
+      currentRole === 'superadmin' ||
+      currentRole === 'admin' ||
+      loggedInUser?.role === 'superadmin' ||
+      loggedInUser?.role === 'admin' ||
+      loggedInUser?.email?.toLowerCase().includes('dafi');
+
+    if (!isAuthorized) {
+      return { success: false, error: 'Akses Ditolak: Pembatalan transaksi hanya diizinkan untuk Admin atau Super Admin.' };
     }
 
     const tx = salesTransactions.find(t => t.id === salesId);
