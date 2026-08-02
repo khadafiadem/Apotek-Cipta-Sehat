@@ -593,8 +593,7 @@ export default function PurchaseModule({ poItemsPrepopulate, clearPOItemsPrepopu
                 { key: 'semua', label: 'Semua' },
                 { key: 'draft', label: 'Draft' },
                 { key: 'dipesan', label: 'Dipesan' },
-                { key: 'diterima', label: 'Barang diterima' },
-                { key: 'batal', label: 'Batal' }
+                { key: 'diterima', label: 'Barang diterima' }
               ].map(opt => (
                 <label
                   key={opt.key}
