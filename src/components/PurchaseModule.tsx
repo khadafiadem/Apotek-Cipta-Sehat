@@ -118,7 +118,14 @@ export default function PurchaseModule({ poItemsPrepopulate, clearPOItemsPrepopu
 
   const handleCreatePO = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedSupplierId || poItems.length === 0) return;
+    if (!selectedSupplierId) {
+      alert('Mohon pilih Supplier Ditarget terlebih dahulu.');
+      return;
+    }
+    if (poItems.length === 0) {
+      alert('Daftar item obat masih kosong. Pilih obat di atas lalu klik "Tambahkan" minimal 1 item.');
+      return;
+    }
 
     createPurchaseOrder(selectedSupplierId, poItems);
     
@@ -550,8 +557,11 @@ export default function PurchaseModule({ poItemsPrepopulate, clearPOItemsPrepopu
             {/* Submit */}
             <button
               type="submit"
-              disabled={!selectedSupplierId || poItems.length === 0}
-              className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-100 disabled:text-gray-400 text-white p-2.5 rounded-lg text-xs font-semibold transition-colors flex items-center justify-center gap-2 shadow-xs"
+              className={`w-full p-2.5 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-2 shadow-xs ${
+                selectedSupplierId && poItems.length > 0
+                  ? 'bg-indigo-600 hover:bg-indigo-700 text-white cursor-pointer'
+                  : 'bg-amber-600 hover:bg-amber-700 text-white cursor-pointer'
+              }`}
             >
               <FileText className="w-4 h-4" />
               <span>Simpan & Kirim Purchase Order</span>
