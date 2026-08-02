@@ -54,6 +54,13 @@ export default function PurchaseModule({ poItemsPrepopulate, clearPOItemsPrepopu
   const [rejectTargetPO, setRejectTargetPO] = useState<PurchaseOrder | null>(null);
   const [rejectReason, setRejectReason] = useState('');
 
+  // Resolve PO item name: prefer saved namaObat, fallback to medicines table, then raw obatId
+  const getPOItemName = (item: { obatId: string; namaObat?: string }) => {
+    if (item.namaObat) return item.namaObat;
+    const med = medicines.find(m => m.id === item.obatId);
+    return med?.nama || item.obatId;
+  };
+
   // ----------------------------------------
   // SUBTAB: PURCHASE ORDERS (PO) CREATE STATE
   // ----------------------------------------
@@ -228,7 +235,7 @@ export default function PurchaseModule({ poItemsPrepopulate, clearPOItemsPrepopu
         const med = medicines.find(m => m.id === item.obatId);
         return {
           obatId: item.obatId,
-          namaObat: item.namaObat,
+          namaObat: item.namaObat || med?.nama || item.obatId,
           jumlahPesan: item.jumlah,
           jumlahDiterima: item.jumlah,
           batch: med?.batch || 'B-' + Math.random().toString(36).substring(2, 7).toUpperCase(),
@@ -652,9 +659,10 @@ export default function PurchaseModule({ poItemsPrepopulate, clearPOItemsPrepopu
 
                       <div className="divide-y divide-gray-100/50 bg-white p-2 rounded border border-gray-100/50 text-[10px] text-gray-600 max-h-[100px] overflow-y-auto">
                         {po.items.map((i, idx) => (
-                          <div key={idx} className="py-1 flex justify-between">
-                            <span>{i.namaObat} x{i.jumlah}</span>
-                            <span className="font-mono">Rp {i.total.toLocaleString('id-ID')}</span>
+                          <div key={idx} className="py-1 flex items-center justify-between gap-2">
+                            <span className="truncate font-semibold text-gray-800">{getPOItemName(i)}</span>
+                            <span className="font-mono whitespace-nowrap bg-indigo-50 text-indigo-700 px-1.5 py-0.5 rounded">x{i.jumlah}</span>
+                            <span className="font-mono whitespace-nowrap">Rp {i.total.toLocaleString('id-ID')}</span>
                           </div>
                         ))}
                       </div>
