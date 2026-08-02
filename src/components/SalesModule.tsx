@@ -46,7 +46,6 @@ export default function SalesModule() {
   const [resepDetail, setResepDetail] = useState('');
   
   const [discount, setDiscount] = useState(0);
-  const [taxRate] = useState(10); // default 10% PPN
   const [caraBayar, setCaraBayar] = useState<'tunai' | 'kredit' | 'debit' | 'qris'>('tunai');
   const [bayarAmount, setBayarAmount] = useState(0);
 
@@ -195,8 +194,7 @@ export default function SalesModule() {
   // SUMMARIES
   // ----------------------------------------
   const subtotal = cart.reduce((sum, item) => sum + item.jumlah * item.hargaSatuan, 0);
-  const tax = Math.round(subtotal * (taxRate / 100));
-  const grandTotal = Math.max(0, subtotal - discount + tax);
+  const grandTotal = Math.max(0, subtotal - discount);
   const kembaliAmount = caraBayar === 'kredit' ? 0 : Math.max(0, bayarAmount - grandTotal);
 
   // Sync cash bayar when total changes
@@ -224,7 +222,7 @@ export default function SalesModule() {
       items: cart,
       caraBayar,
       diskon: discount,
-      pajak: tax,
+      pajak: 0,
       bayar: caraBayar === 'kredit' ? 0 : Number(bayarAmount),
       isResep,
       resepDetail: isResep ? resepDetail : undefined
@@ -531,11 +529,6 @@ export default function SalesModule() {
                   type="number" min="0" max={subtotal} value={discount} onChange={e => setDiscount(Number(e.target.value))}
                   className="w-24 text-right border border-gray-200 rounded bg-white p-0.5 text-xs font-mono"
                 />
-              </div>
-
-              <div className="flex justify-between text-gray-500">
-                <span>PPN Pajak ({taxRate}%):</span>
-                <span>Rp {tax.toLocaleString('id-ID')}</span>
               </div>
 
               <div className="border-t border-gray-200 my-1"></div>
@@ -1046,10 +1039,6 @@ export default function SalesModule() {
                       <span>- Rp {lastTx.diskon.toLocaleString('id-ID')}</span>
                     </div>
                   )}
-                  <div className="flex justify-between text-gray-500">
-                    <span>PPN Pajak (10%):</span>
-                    <span>Rp {lastTx.pajak.toLocaleString('id-ID')}</span>
-                  </div>
                   <div className="border-b border-gray-200 my-1"></div>
                   <div className="flex justify-between text-xs font-bold text-gray-900">
                     <span>TOTAL AKHIR:</span>
@@ -1155,7 +1144,6 @@ export default function SalesModule() {
                       <div style="text-align:right;">
                         <div style="display:flex;justify-between;"><span>Subtotal:</span><span>Rp ${lastTx.subtotal.toLocaleString('id-ID')}</span></div>
                         ${diskonHtml}
-                        <div style="display:flex;justify-between;color:#888;"><span>PPN Pajak (10%):</span><span>Rp ${lastTx.pajak.toLocaleString('id-ID')}</span></div>
                         <hr style="border:none;border-top:1px solid #ddd;margin:4px 0;">
                         <div style="display:flex;justify-between;font-weight:700;font-size:13px;"><span>TOTAL AKHIR:</span><span>Rp ${lastTx.total.toLocaleString('id-ID')}</span></div>
                         ${bayarHtml}
