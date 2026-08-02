@@ -234,6 +234,7 @@ export interface StockCard {
   stokAwal: number;
   stokAkhir: number;
   keterangan: string;
+  oleh: string;
 }
 
 export interface OpnameItem {

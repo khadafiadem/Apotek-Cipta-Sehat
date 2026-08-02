@@ -15,6 +15,7 @@ function toRow(sc: StockCard) {
     stok_awal: sc.stokAwal,
     stok_akhir: sc.stokAkhir,
     keterangan: sc.keterangan,
+    oleh: sc.oleh,
   };
 }
 
@@ -30,6 +31,7 @@ function toStockCard(row: Record<string, unknown>): StockCard {
     stokAwal: row.stok_awal as number,
     stokAkhir: row.stok_akhir as number,
     keterangan: row.keterangan as string,
+    oleh: (row.oleh as string) || '',
   };
 }
 

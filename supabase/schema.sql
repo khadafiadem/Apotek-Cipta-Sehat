@@ -165,7 +165,8 @@ CREATE TABLE IF NOT EXISTS stock_cards (
   jumlah INTEGER DEFAULT 0,
   stok_awal INTEGER DEFAULT 0,
   stok_akhir INTEGER DEFAULT 0,
-  keterangan TEXT DEFAULT ''
+  keterangan TEXT DEFAULT '',
+  oleh TEXT DEFAULT ''
 );
 
 -- 15. TABEL STOK OPNAME
@@ -204,13 +205,6 @@ CREATE TABLE IF NOT EXISTS user_sessions (
   user_role TEXT NOT NULL,
   role TEXT NOT NULL,
   created_at TEXT DEFAULT now()::text
-);
-  id TEXT PRIMARY KEY,
-  tanggal TEXT NOT NULL,
-  tipe TEXT NOT NULL,
-  kategori TEXT NOT NULL,
-  jumlah NUMERIC DEFAULT 0,
-  keterangan TEXT DEFAULT ''
 );
 
 -- ============================================================

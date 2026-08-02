@@ -17,7 +17,8 @@ import {
   Clock,
   Archive,
   Info,
-  Search
+  Search,
+  User
 } from 'lucide-react';
 
 export default function StockInventory() {
@@ -240,6 +241,7 @@ export default function StockInventory() {
                       <th className="py-3 px-3 text-center">Stok Akhir</th>
                       <th className="py-3 px-3">Referensi ID / Faktur</th>
                       <th className="py-3 px-3">Keterangan / Deskripsi</th>
+                      <th className="py-3 px-3">Diinput Oleh</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100 font-sans">
@@ -271,6 +273,12 @@ export default function StockInventory() {
                           <td className="py-3 px-3 text-center font-bold font-mono text-gray-900">{card.stokAkhir} Pcs</td>
                           <td className="py-3 px-3 font-mono font-semibold text-indigo-700 text-[10px]">{card.referensiId}</td>
                           <td className="py-3 px-3 text-gray-500">{card.keterangan}</td>
+                          <td className="py-3 px-3">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-gray-50 border border-gray-100 rounded text-[10px] font-semibold text-gray-700">
+                              <User className="w-3 h-3 text-gray-400" />
+                              {card.oleh || '-'}
+                            </span>
+                          </td>
                         </tr>
                       );
                     })}

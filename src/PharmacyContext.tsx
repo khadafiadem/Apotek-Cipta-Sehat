@@ -278,11 +278,11 @@ const INITIAL_CASH: CashJournal[] = [
 ];
 
 const INITIAL_STOCK_CARDS: StockCard[] = [
-  { id: 'SC-1', obatId: 'MED-1', namaObat: 'Paracetamol 500mg', tanggal: '2026-07-01T00:00:00Z', tipe: 'masuk', referensiId: 'SYSTEM', jumlah: 24, stokAwal: 0, stokAkhir: 24, keterangan: 'Stok awal sistem' },
-  { id: 'SC-2', obatId: 'MED-1', namaObat: 'Paracetamol 500mg', tanggal: '2026-07-02T11:00:00Z', tipe: 'masuk', referensiId: 'RCV-2001', jumlah: 100, stokAwal: 24, stokAkhir: 124, keterangan: 'Penerimaan barang PO-2001' },
-  { id: 'SC-3', obatId: 'MED-1', namaObat: 'Paracetamol 500mg', tanggal: '2026-07-05T10:30:00Z', tipe: 'keluar', referensiId: 'TX-1001', jumlah: 4, stokAwal: 124, stokAkhir: 120, keterangan: 'Penjualan kasir TX-1001' },
-  { id: 'SC-4', obatId: 'MED-5', namaObat: 'Metformin 500mg', tanggal: '2026-07-02T11:00:00Z', tipe: 'masuk', referensiId: 'RCV-2001', jumlah: 150, stokAwal: 0, stokAkhir: 150, keterangan: 'Penerimaan barang PO-2001' },
-  { id: 'SC-5', obatId: 'MED-5', namaObat: 'Metformin 500mg', tanggal: '2026-07-07T11:00:00Z', tipe: 'keluar', referensiId: 'TX-1003', jumlah: 30, stokAwal: 150, stokAkhir: 120, keterangan: 'Penjualan kasir TX-1003' }
+  { id: 'SC-1', obatId: 'MED-1', namaObat: 'Paracetamol 500mg', tanggal: '2026-07-01T00:00:00Z', tipe: 'masuk', referensiId: 'SYSTEM', jumlah: 24, stokAwal: 0, stokAkhir: 24, keterangan: 'Stok awal sistem', oleh: 'Super Admin' },
+  { id: 'SC-2', obatId: 'MED-1', namaObat: 'Paracetamol 500mg', tanggal: '2026-07-02T11:00:00Z', tipe: 'masuk', referensiId: 'RCV-2001', jumlah: 100, stokAwal: 24, stokAkhir: 124, keterangan: 'Penerimaan barang PO-2001', oleh: 'Super Admin' },
+  { id: 'SC-3', obatId: 'MED-1', namaObat: 'Paracetamol 500mg', tanggal: '2026-07-05T10:30:00Z', tipe: 'keluar', referensiId: 'TX-1001', jumlah: 4, stokAwal: 124, stokAkhir: 120, keterangan: 'Penjualan kasir TX-1001', oleh: 'Kasir Utama' },
+  { id: 'SC-4', obatId: 'MED-5', namaObat: 'Metformin 500mg', tanggal: '2026-07-02T11:00:00Z', tipe: 'masuk', referensiId: 'RCV-2001', jumlah: 150, stokAwal: 0, stokAkhir: 150, keterangan: 'Penerimaan barang PO-2001', oleh: 'Super Admin' },
+  { id: 'SC-5', obatId: 'MED-5', namaObat: 'Metformin 500mg', tanggal: '2026-07-07T11:00:00Z', tipe: 'keluar', referensiId: 'TX-1003', jumlah: 30, stokAwal: 150, stokAkhir: 120, keterangan: 'Penjualan kasir TX-1003', oleh: 'Kasir Utama' }
 ];
 
 export const PharmacyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -326,6 +326,8 @@ export const PharmacyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [stockCards, setStockCards] = useState<StockCard[]>([]);
   const [stockOpnames, setStockOpnames] = useState<StockOpname[]>([]);
   const [cashJournal, setCashJournal] = useState<CashJournal[]>([]);
+
+  const currentUserName = loggedInUser?.name || (currentRole === 'kasir' ? 'Kasir Utama' : 'Super Admin');
 
   // Load data from Supabase on mount
   useEffect(() => {
@@ -413,7 +415,7 @@ export const PharmacyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setMedicines(prev => [...prev, newMed]);
     const newCard: StockCard = {
       id: genId('SC'), obatId: id, namaObat: newMed.nama, tanggal: new Date().toISOString(),
-      tipe: 'masuk', referensiId: 'MANUAL', jumlah: newMed.stok, stokAwal: 0, stokAkhir: newMed.stok, keterangan: 'Registrasi obat baru'
+      tipe: 'masuk', referensiId: 'MANUAL', jumlah: newMed.stok, stokAwal: 0, stokAkhir: newMed.stok, keterangan: 'Registrasi obat baru', oleh: currentUserName
     };
     setStockCards(prev => [...prev, newCard]);
 
@@ -457,7 +459,8 @@ export const PharmacyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             jumlah: newMed.stok,
             stokAwal: 0,
             stokAkhir: newMed.stok,
-            keterangan: 'Import batch obat (Mohammad Khadafi)'
+            keterangan: 'Import batch obat (Mohammad Khadafi)',
+            oleh: currentUserName
           });
         }
       });
@@ -502,7 +505,8 @@ export const PharmacyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             id: genId('SC'), obatId: m.id, namaObat: m.nama, tanggal: new Date().toISOString(),
             tipe: 'penyesuaian', referensiId: 'MANUAL_EDIT', jumlah: Math.abs(diff),
             stokAwal: m.stok, stokAkhir: updatedFields.stok,
-            keterangan: `Penyesuaian manual (${diff > 0 ? '+' : ''}${diff})`
+            keterangan: `Penyesuaian manual (${diff > 0 ? '+' : ''}${diff})`,
+            oleh: currentUserName
           };
           setStockCards(prevCards => [...prevCards, newCard]);
           stockCardService.add(newCard).catch(e => console.error('Failed to save stock card:', e));
@@ -677,7 +681,8 @@ export const PharmacyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           jumlah: received.jumlahDiterima,
           stokAwal: oldStok,
           stokAkhir: newStok,
-          keterangan: `Pembelian Faktur ${params.noFaktur || rcvId} (${supplierNama})`
+          keterangan: `Pembelian Faktur ${params.noFaktur || rcvId} (${supplierNama})`,
+          oleh: currentUserName
         });
         return {
           ...med,
@@ -755,7 +760,8 @@ export const PharmacyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           newCards.push({
             id: genId('SC'), obatId: m.id, namaObat: m.nama, tanggal: timestamp,
             tipe: 'retur_beli', referensiId: returnId, jumlah: item.jumlah,
-            stokAwal: oldStok, stokAkhir: newStok, keterangan: `Retur Pembelian Supplier - ${item.alasan}`
+            stokAwal: oldStok, stokAkhir: newStok, keterangan: `Retur Pembelian Supplier - ${item.alasan}`,
+            oleh: currentUserName
           });
           return { ...m, stok: newStok };
         }
@@ -847,7 +853,8 @@ export const PharmacyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         newCards.push({
           id: genId('SC'), obatId: med.id, namaObat: med.nama, tanggal: timestamp,
           tipe: 'keluar', referensiId: txId, jumlah: soldQty,
-          stokAwal: oldStok, stokAkhir: newStok, keterangan: `Penjualan Kasir ${txId}`
+          stokAwal: oldStok, stokAkhir: newStok, keterangan: `Penjualan Kasir ${txId}`,
+          oleh: currentUserName
         });
         medicineService.update(med.id, { stok: newStok }).catch(e => console.error('Failed to update stock:', e));
         return { ...med, stok: newStok };
@@ -917,7 +924,8 @@ export const PharmacyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           newCards.push({
             id: genId('SC'), obatId: m.id, namaObat: m.nama, tanggal: timestamp,
             tipe: 'retur_jual', referensiId: retId, jumlah: item.jumlah,
-            stokAwal: oldStok, stokAkhir: newStok, keterangan: `Retur Penjualan Kasir - ${alasan}`
+            stokAwal: oldStok, stokAkhir: newStok, keterangan: `Retur Penjualan Kasir - ${alasan}`,
+            oleh: currentUserName
           });
           medicineService.update(m.id, { stok: newStok }).catch(e => console.error('Failed to update stock:', e));
           return { ...m, stok: newStok };
@@ -986,7 +994,8 @@ export const PharmacyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           jumlah: returnQty,
           stokAwal: oldStok,
           stokAkhir: newStok,
-          keterangan: `Pembatalan Transaksi ${salesId} (Super Admin) - ${alasan}`
+          keterangan: `Pembatalan Transaksi ${salesId} (Super Admin) - ${alasan}`,
+          oleh: currentUserName
         });
         medicineService.update(med.id, { stok: newStok }).catch(e => console.error('Failed to update stock:', e));
         return { ...med, stok: newStok };
@@ -1080,7 +1089,8 @@ export const PharmacyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
               id: genId('SC'), obatId: m.id, namaObat: m.nama, tanggal: timestamp,
               tipe: 'penyesuaian', referensiId: opnameId, jumlah: Math.abs(selisih),
               stokAwal: stokSistem, stokAkhir: item.stokFisik,
-              keterangan: `Stok Opname: ${item.keterangan || 'Selisih penyesuaian'}`
+              keterangan: `Stok Opname: ${item.keterangan || 'Selisih penyesuaian'}`,
+              oleh
             });
             medicineService.update(m.id, { stok: item.stokFisik }).catch(e => console.error('Failed to update stock:', e));
             return { ...m, stok: item.stokFisik };
