@@ -767,7 +767,10 @@ export const PharmacyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         }
         return m;
       }));
-      if (newCards.length > 0) stockCardService.addMany(newCards).catch(e => console.error('Failed to save stock cards:', e));
+      if (newCards.length > 0) {
+        setStockCards(prev => [...prev, ...newCards]);
+        stockCardService.addMany(newCards).catch(e => console.error('Failed to save stock cards:', e));
+      }
 
       return { obatId: item.obatId, namaObat: med ? med.nama : 'Unknown', jumlah: item.jumlah, hargaBeli: buyPrice, total: subtotal };
     });
@@ -862,7 +865,10 @@ export const PharmacyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       return med;
     }));
 
-    if (newCards.length > 0) stockCardService.addMany(newCards).catch(e => console.error('Failed to save stock cards:', e));
+    if (newCards.length > 0) {
+      setStockCards(prev => [...prev, ...newCards]);
+      stockCardService.addMany(newCards).catch(e => console.error('Failed to save stock cards:', e));
+    }
 
     const processedItems: SalesItem[] = params.items.map(item => ({ ...item, total: item.jumlah * item.hargaSatuan }));
     const subtotal = processedItems.reduce((sum, item) => sum + item.total, 0);
@@ -936,7 +942,10 @@ export const PharmacyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       return { obatId: item.obatId, namaObat: med ? med.nama : 'Unknown', jumlah: item.jumlah, hargaSatuan: sellPrice, total: subtotal };
     });
 
-    if (newCards.length > 0) stockCardService.addMany(newCards).catch(e => console.error('Failed to save stock cards:', e));
+    if (newCards.length > 0) {
+      setStockCards(prev => [...prev, ...newCards]);
+      stockCardService.addMany(newCards).catch(e => console.error('Failed to save stock cards:', e));
+    }
 
     const newReturn: ReturnSales = { id: retId, salesId, tanggal: timestamp, items: returnItems, totalRefund, alasan };
     setSalesReturns(prev => [...prev, newReturn]);
@@ -1004,6 +1013,7 @@ export const PharmacyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }));
 
     if (newCards.length > 0) {
+      setStockCards(prev => [...prev, ...newCards]);
       stockCardService.addMany(newCards).catch(e => console.error('Failed to save stock cards:', e));
     }
 
@@ -1102,7 +1112,10 @@ export const PharmacyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       return { obatId: item.obatId, namaObat: med ? med.nama : 'Unknown', stokSistem, stokFisik: item.stokFisik, selisih, keterangan: item.keterangan };
     });
 
-    if (newCards.length > 0) stockCardService.addMany(newCards).catch(e => console.error('Failed to save stock cards:', e));
+    if (newCards.length > 0) {
+      setStockCards(prev => [...prev, ...newCards]);
+      stockCardService.addMany(newCards).catch(e => console.error('Failed to save stock cards:', e));
+    }
 
     const newOpname: StockOpname = { id: opnameId, tanggal: timestamp, oleh, items: opnameItems };
     setStockOpnames(prev => [newOpname, ...prev]);
