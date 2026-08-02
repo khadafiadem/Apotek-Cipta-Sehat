@@ -156,6 +156,7 @@ function MainAppShell() {
   };
 
   const getActiveUserName = () => {
+    if (loggedInUser?.name) return loggedInUser.name;
     const user = allUsers.find(u => u.role === currentRole);
     return user ? user.name : (currentRole === 'superadmin' ? 'Super Admin' : currentRole === 'admin' ? 'Administrator' : currentRole === 'manager' ? 'Manager' : currentRole);
   };
