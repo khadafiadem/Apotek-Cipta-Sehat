@@ -662,7 +662,7 @@ export const PharmacyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
 
     const newCards: StockCard[] = [];
-    setMedicines(prevMeds => prevMeds.map(med => {
+    const updatedMeds = medicines.map(med => {
       const received = params.itemsReceived.find(r => r.obatId === med.id);
       if (received && received.jumlahDiterima > 0) {
         const oldStok = med.stok;
@@ -688,7 +688,11 @@ export const PharmacyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         };
       }
       return med;
-    }));
+    });
+    setMedicines(updatedMeds);
+    if (newCards.length > 0) {
+      setStockCards(prev => [...prev, ...newCards]);
+    }
 
     // Persist
     receivingGoodsService.add(newReceipt).catch(e => console.error('Failed to save receiving:', e));
