@@ -17,13 +17,8 @@ import {
   ShieldX,
   PlusCircle,
   AlertCircle,
-  Calendar,
   Receipt,
-  Building2,
-  Sparkles,
-  X,
   Calculator,
-  Percent,
   ShoppingBag,
   Search
 } from 'lucide-react';
@@ -36,13 +31,12 @@ interface PurchaseModuleProps {
 export default function PurchaseModule({ poItemsPrepopulate, clearPOItemsPrepopulate }: PurchaseModuleProps) {
   const {
     currentRole,
-    medicines, addMedicine,
-    suppliers, addSupplier,
+    medicines,
+    suppliers,
     purchaseOrders, createPurchaseOrder, updatePOStatus,
-    receivingGoods, receivePurchaseOrder, createDirectReceiving,
+    createDirectReceiving,
     returnPurchases, returnPurchase,
-    supplierDebts, payDebt,
-    debtPayments
+    supplierDebts, payDebt
   } = usePharmacy();
 
   const [activeSubTab, setActiveSubTab] = useState<'po' | 'terima' | 'retur' | 'hutang'>('po');
@@ -202,45 +196,14 @@ export default function PurchaseModule({ poItemsPrepopulate, clearPOItemsPrepopu
     ppnPersen: number;
   }[]>([]);
 
-  // Item builder fields (add item line by line)
-  const [tempRecvObatId, setTempRecvObatId] = useState('');
-  const [medSearchFilter, setMedSearchFilter] = useState('');
-  const [tempRecvQty, setTempRecvQty] = useState<number>(10);
-  const [tempRecvHarga, setTempRecvHarga] = useState<number>(0);
-  const [tempRecvDiskon, setTempRecvDiskon] = useState<number>(0);
-  const [tempRecvBatch, setTempRecvBatch] = useState('');
-  const [tempRecvExp, setTempRecvExp] = useState('');
-
-  // Quick modals state
-  const [showAddSupplierModal, setShowAddSupplierModal] = useState(false);
-  const [newSupNama, setNewSupNama] = useState('');
-  const [newSupKontak, setNewSupKontak] = useState('');
-  const [newSupAlamat, setNewSupAlamat] = useState('');
-
-  const [showAddMedicineModal, setShowAddMedicineModal] = useState(false);
-  const [newMedNama, setNewMedNama] = useState('');
-  const [newMedKategori, setNewMedKategori] = useState('Analgesik');
-  const [newMedSatuan, setNewMedSatuan] = useState('Tablet');
-  const [newMedHargaBeli, setNewMedHargaBeli] = useState(0);
-  const [newMedHargaJual, setNewMedHargaJual] = useState(0);
-  const [newMedStokMin, setNewMedStokMin] = useState(10);
-  const [newMedLokasiRak, setNewMedLokasiRak] = useState('');
-
-  // Fill item details when picking medicine
-  useEffect(() => {
-    if (tempRecvObatId) {
-      const med = medicines.find(m => m.id === tempRecvObatId);
-      if (med) {
-        setTempRecvHarga(med.hargaBeli);
-        setTempRecvBatch(med.batch || 'B-' + Math.random().toString(36).substring(2, 7).toUpperCase());
-        setTempRecvExp(med.expiredDate || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
-      }
-    }
-  }, [tempRecvObatId, medicines]);
-
   // Load PO details into form if user selects PO
   const handleSelectPOForReceiving = (poId: string) => {
     setSelectedPOId(poId);
+    if (!poId) {
+      setRecvItems([]);
+      setRecvSupplierId('');
+      return;
+    }
     const po = purchaseOrders.find(p => p.id === poId);
     if (po) {
       setRecvSupplierId(po.supplierId);
@@ -262,42 +225,6 @@ export default function PurchaseModule({ poItemsPrepopulate, clearPOItemsPrepopu
     }
   };
 
-  const addRecvItem = () => {
-    if (!tempRecvObatId || tempRecvQty <= 0) return;
-    const med = medicines.find(m => m.id === tempRecvObatId);
-    if (!med) return;
-
-    const existsIdx = recvItems.findIndex(i => i.obatId === tempRecvObatId);
-    if (existsIdx >= 0) {
-      const updated = [...recvItems];
-      updated[existsIdx].jumlahDiterima += Number(tempRecvQty);
-      if (tempRecvHarga > 0) updated[existsIdx].hargaBeli = Number(tempRecvHarga);
-      if (tempRecvDiskon >= 0) updated[existsIdx].diskonPersen = Number(tempRecvDiskon);
-      if (tempRecvBatch) updated[existsIdx].batch = tempRecvBatch;
-      if (tempRecvExp) updated[existsIdx].expiredDate = tempRecvExp;
-      setRecvItems(updated);
-    } else {
-      setRecvItems(prev => [...prev, {
-        obatId: tempRecvObatId,
-        namaObat: med.nama,
-        jumlahPesan: Number(tempRecvQty),
-        jumlahDiterima: Number(tempRecvQty),
-        batch: tempRecvBatch || 'B-' + Math.random().toString(36).substring(2, 7).toUpperCase(),
-        expiredDate: tempRecvExp || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        hargaBeli: Number(tempRecvHarga) || med.hargaBeli,
-        diskonPersen: Number(tempRecvDiskon) || 0,
-        ppnPersen: 11
-      }]);
-    }
-
-    setTempRecvObatId('');
-    setTempRecvQty(10);
-    setTempRecvHarga(0);
-    setTempRecvDiskon(0);
-    setTempRecvBatch('');
-    setTempRecvExp('');
-  };
-
   const handleUpdateRecvItemField = (index: number, field: string, val: any) => {
     setRecvItems(prev => prev.map((item, i) => i === index ? { ...item, [field]: val } : item));
   };
@@ -306,43 +233,10 @@ export default function PurchaseModule({ poItemsPrepopulate, clearPOItemsPrepopu
     setRecvItems(prev => prev.filter((_, i) => i !== index));
   };
 
-  const handleQuickAddSupplierSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newSupNama.trim()) return;
-    addSupplier({
-      nama: newSupNama.trim(),
-      kontak: newSupKontak.trim() || '-',
-      alamat: newSupAlamat.trim() || '-'
-    });
-    setShowAddSupplierModal(false);
-    setNewSupNama(''); setNewSupKontak(''); setNewSupAlamat('');
-    alert(`Distributor "${newSupNama}" berhasil ditambahkan ke Master Data!`);
-  };
-
-  const handleQuickAddMedicineSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newMedNama.trim()) return;
-    addMedicine({
-      nama: newMedNama.trim(),
-      kategori: newMedKategori,
-      satuan: newMedSatuan,
-      hargaBeli: Number(newMedHargaBeli) || 0,
-      hargaJual: Number(newMedHargaJual) || Math.round((Number(newMedHargaBeli) || 0) * 1.25),
-      stok: 0,
-      batch: 'B-' + Math.random().toString(36).substring(2, 7).toUpperCase(),
-      expiredDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      lokasiRak: newMedLokasiRak || 'Gudang Utama',
-      stokMin: Number(newMedStokMin) || 10
-    });
-    setShowAddMedicineModal(false);
-    setNewMedNama(''); setNewMedHargaBeli(0); setNewMedHargaJual(0);
-    alert(`Obat "${newMedNama}" berhasil ditambahkan ke Master Data!`);
-  };
-
   const handleSubmitReceipt = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!recvSupplierId) {
-      alert('Mohon pilih Nama Distributor (Supplier) terlebih dahulu.');
+    if (!selectedPOId) {
+      alert('Mohon pilih PO yang barangnya datang terlebih dahulu.');
       return;
     }
     if (!recvNoFaktur.trim()) {
@@ -350,7 +244,7 @@ export default function PurchaseModule({ poItemsPrepopulate, clearPOItemsPrepopu
       return;
     }
     if (recvItems.length === 0) {
-      alert('Daftar item obat masih kosong. Silakan tambahkan minimal 1 item barang.');
+      alert('Item barang masih kosong. Pastikan PO yang dipilih memiliki item obat.');
       return;
     }
 
@@ -370,6 +264,7 @@ export default function PurchaseModule({ poItemsPrepopulate, clearPOItemsPrepopu
 
     // Reset Form
     setSelectedPOId('');
+    setRecvSupplierId('');
     setRecvNoFaktur('');
     setRecvItems([]);
     setRecvDiskonFaktur(0);
@@ -451,7 +346,7 @@ export default function PurchaseModule({ poItemsPrepopulate, clearPOItemsPrepopu
             Modul Pengadaan & Pembelian
           </h1>
           <p className="text-sm text-gray-500">
-            Alur harian pemesanan obat ke supplier (Purchase Order), penerimaan fisik (stok FIFO), retur barang rusak, dan pembayaran hutang dagang.
+            Alur harian pemesanan obat ke supplier (Purchase Order), verifikasi penerimaan barang datang (stok FIFO), retur barang rusak, dan pembayaran hutang dagang. Barang yang datang tidak perlu diinput ulang — cukup pilih PO dan cek kesesuaiannya.
           </p>
         </div>
       </div>
@@ -747,78 +642,70 @@ export default function PurchaseModule({ poItemsPrepopulate, clearPOItemsPrepopu
               <div>
                 <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
                   <Truck className="w-5 h-5 text-indigo-600" />
-                  <span>Formulir Pembelian / Penerimaan Barang Distributor</span>
+                  <span>Formulir Penerimaan / Verifikasi Barang Datang</span>
                 </h3>
                 <p className="text-xs text-gray-500 mt-0.5">
-                  Input data faktur distributor, barang yang datang, diskon, PPN 11%, dan rumus otomatis jatuh tempo kredit.
+                  Barang yang datang otomatis dimuat dari PO — tanpa mengetik ulang. Cukup cek & verifikasi kesesuaian antara item di PO dengan barang fisik yang tiba.
                 </p>
               </div>
-              {purchaseOrders.filter(p => p.status === 'dipesan').length > 0 && (
-                <div className="flex items-center gap-2 bg-indigo-50/70 p-2 rounded-lg border border-indigo-100">
-                  <Receipt className="w-4 h-4 text-indigo-600" />
-                  <label className="text-xs font-semibold text-indigo-900 whitespace-nowrap">Load dari PO:</label>
+            </div>
+
+            {/* STEP 1: PILIH PO YANG DATANG (item otomatis terisi dari PO) */}
+            <div className="bg-indigo-50/70 p-4 rounded-xl border border-indigo-100 space-y-3">
+              <span className="text-xs font-extrabold uppercase tracking-wider text-indigo-700 flex items-center gap-1.5">
+                <span className="bg-indigo-600 text-white w-5 h-5 rounded-full inline-flex items-center justify-center text-[11px] font-bold">1</span>
+                Pilih PO yang Barangnya Datang *
+              </span>
+
+              {purchaseOrders.filter(p => p.status === 'dipesan').length === 0 ? (
+                <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs flex items-center gap-2.5">
+                  <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+                  <div>
+                    <p className="font-bold text-amber-900">Belum ada PO berstatus "Dipesan".</p>
+                    <p className="text-[11px] text-amber-800">
+                      Buat & kirim PO terlebih dahulu di tab <strong>Buat PO Baru</strong> sebelum menerima barang.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                  <div className="flex items-center gap-2">
+                    <Receipt className="w-4 h-4 text-indigo-600" />
+                    <label className="text-xs font-bold text-indigo-900 whitespace-nowrap">
+                      Pilih PO:
+                    </label>
+                  </div>
                   <select
+                    required
                     value={selectedPOId}
                     onChange={e => handleSelectPOForReceiving(e.target.value)}
-                    className="border border-indigo-200 bg-white rounded p-1 text-xs font-semibold text-indigo-700"
+                    className="w-full sm:w-auto flex-1 border border-indigo-200 bg-white rounded p-2 text-xs font-semibold text-indigo-700"
                   >
-                    <option value="">-- Pilih PO Dipesan --</option>
+                    <option value="">-- Pilih PO yang datang (item otomatis terisi) --</option>
                     {purchaseOrders.filter(p => p.status === 'dipesan').map(po => (
-                      <option key={po.id} value={po.id}>{po.id} - {po.supplierNama} (Rp {po.total.toLocaleString('id-ID')})</option>
+                      <option key={po.id} value={po.id}>{po.id} - {po.supplierNama} ({po.items.length} item, Rp {po.total.toLocaleString('id-ID')})</option>
                     ))}
                   </select>
                 </div>
               )}
-            </div>
 
-            {/* STEP 1: DISTRIBUTOR / SUPPLIER SELECTION */}
-            <div className="bg-gray-50/60 p-4 rounded-xl border border-gray-100 space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-extrabold uppercase tracking-wider text-indigo-700 flex items-center gap-1.5">
-                  <span className="bg-indigo-600 text-white w-5 h-5 rounded-full inline-flex items-center justify-center text-[11px] font-bold">1</span>
-                  Pilih Nama Distributor / Supplier (Master Data)
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setShowAddSupplierModal(true)}
-                  className="text-xs font-bold text-indigo-600 hover:text-indigo-800 bg-white hover:bg-indigo-50 border border-indigo-200 px-3 py-1 rounded-lg transition-colors flex items-center gap-1 shadow-2xs"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>+ Tambah Distributor Baru</span>
-                </button>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                <div className="sm:col-span-2">
-                  <label className="block text-[11px] font-semibold text-gray-600 uppercase tracking-wider mb-1">
-                    Distributor / Supplier *
-                  </label>
-                  <select
-                    required
-                    value={recvSupplierId}
-                    onChange={e => setRecvSupplierId(e.target.value)}
-                    className="w-full border border-gray-200 bg-white rounded-lg p-2 text-xs font-semibold focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
-                  >
-                    <option value="">-- Pilih Distributor dari Master Data --</option>
-                    {suppliers.map(s => (
-                      <option key={s.id} value={s.id}>
-                        {s.nama} {s.kontak ? `(${s.kontak})` : ''}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                {recvSupplierId && (
-                  <div className="p-2.5 bg-white border border-gray-200 rounded-lg text-xs flex flex-col justify-center">
-                    <p className="text-[10px] uppercase font-bold text-gray-400">Distributor Terpilih:</p>
-                    <p className="font-bold text-gray-900">
-                      {suppliers.find(s => s.id === recvSupplierId)?.nama}
-                    </p>
-                    <p className="text-[11px] text-gray-500 truncate">
-                      {suppliers.find(s => s.id === recvSupplierId)?.alamat || 'Alamat tidak diisi'}
-                    </p>
+              {selectedPOId && (() => {
+                const po = purchaseOrders.find(p => p.id === selectedPOId);
+                if (!po) return null;
+                return (
+                  <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-xs flex items-center gap-2.5">
+                    <CheckCircle className="w-5 h-5 text-emerald-600 shrink-0" />
+                    <div>
+                      <p className="font-bold text-emerald-900">
+                        Distributor: {po.supplierNama}
+                      </p>
+                      <p className="text-[11px] text-emerald-800">
+                        {po.items.length} item otomatis dimuat dari PO {po.id} — tidak perlu mengetik ulang. Cukup cek Qty Diterima, No. Batch & ED tiap baris di bawah.
+                      </p>
+                    </div>
                   </div>
-                )}
-              </div>
+                );
+              })()}
             </div>
 
             {/* STEP 2: FAKTUR HEADER & RUMUS JATUH TEMPO */}
@@ -948,153 +835,37 @@ export default function PurchaseModule({ poItemsPrepopulate, clearPOItemsPrepopu
               )}
             </div>
 
-            {/* STEP 3: ITEM LEVEL INPUT (Nama Barang, Qty, Diskon, PPN 11%, Subtotal) */}
+            {/* STEP 3: VERIFIKASI BARANG DATANG (otomatis dari PO) */}
             <div className="bg-gray-50/60 p-4 rounded-xl border border-gray-100 space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-extrabold uppercase tracking-wider text-indigo-700 flex items-center gap-1.5">
-                  <span className="bg-indigo-600 text-white w-5 h-5 rounded-full inline-flex items-center justify-center text-[11px] font-bold">3</span>
-                  Input Item Obat (Nama Barang, Qty, Diskon, PPN 11%, Subtotal)
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setShowAddMedicineModal(true)}
-                  className="text-xs font-bold text-indigo-600 hover:text-indigo-800 bg-white hover:bg-indigo-50 border border-indigo-200 px-3 py-1 rounded-lg transition-colors flex items-center gap-1 shadow-2xs"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>+ Tambah Obat Baru</span>
-                </button>
-              </div>
+              <span className="text-xs font-extrabold uppercase tracking-wider text-indigo-700 flex items-center gap-1.5">
+                <span className="bg-indigo-600 text-white w-5 h-5 rounded-full inline-flex items-center justify-center text-[11px] font-bold">3</span>
+                Verifikasi Barang Datang (Item otomatis dari PO)
+              </span>
 
-              {/* Item Adder Box */}
-              <div className="bg-white p-4 border border-indigo-100 rounded-xl space-y-3.5 shadow-2xs">
-                {/* Search Filter for Medicines */}
-                {medicines.length > 5 && (
-                  <div className="flex items-center gap-2 bg-indigo-50/50 p-2 rounded-lg border border-indigo-100">
-                    <span className="text-[10px] font-bold text-indigo-900 uppercase whitespace-nowrap">🔍 Filter Nama Obat:</span>
-                    <input
-                      type="text"
-                      value={medSearchFilter}
-                      onChange={e => setMedSearchFilter(e.target.value)}
-                      placeholder="Ketik untuk memfilter nama obat (contoh: Paracetamol)..."
-                      className="w-full bg-white border border-indigo-200 rounded px-2 py-1 text-xs text-gray-900 font-semibold placeholder:text-gray-400 focus:outline-hidden focus:ring-1 focus:ring-indigo-500"
-                    />
-                    {medSearchFilter && (
-                      <button
-                        type="button"
-                        onClick={() => setMedSearchFilter('')}
-                        className="text-[10px] font-bold text-indigo-600 hover:text-indigo-800 bg-white px-2 py-0.5 rounded border border-indigo-200"
-                      >
-                        Reset
-                      </button>
-                    )}
-                  </div>
-                )}
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3">
-                  <div className="lg:col-span-4">
-                    <label className="block text-[10px] font-bold text-gray-700 uppercase mb-0.5">
-                      Pilih Nama Obat *
-                    </label>
-                    <select
-                      required
-                      value={tempRecvObatId}
-                      onChange={e => setTempRecvObatId(e.target.value)}
-                      className="w-full border border-gray-300 rounded-lg p-2 text-xs bg-white text-gray-900 font-extrabold focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-600 shadow-2xs"
-                    >
-                      <option value="" className="text-gray-500 bg-white">-- Pilih Obat dari Master Data --</option>
-                      {medicines
-                        .filter(m => !medSearchFilter || m.nama.toLowerCase().includes(medSearchFilter.toLowerCase()) || m.kategori.toLowerCase().includes(medSearchFilter.toLowerCase()))
-                        .map(m => (
-                          <option key={m.id} value={m.id} className="text-gray-900 bg-white font-semibold py-1">
-                            {m.nama} (Stok: {m.stok} {m.satuan} | Rp {m.hargaBeli.toLocaleString('id-ID')})
-                          </option>
-                        ))}
-                    </select>
-
-                    {/* Selected Medicine Info Badge */}
-                    {tempRecvObatId && (() => {
-                      const selMed = medicines.find(m => m.id === tempRecvObatId);
-                      if (!selMed) return null;
-                      return (
-                        <div className="mt-1.5 p-2 bg-emerald-50 border border-emerald-200 rounded-md text-[11px] text-emerald-900 font-semibold space-y-0.5">
-                          <p className="font-extrabold text-emerald-950 flex items-center gap-1">
-                            <span>✓</span> <span>{selMed.nama}</span>
-                          </p>
-                          <p className="text-[10px] text-emerald-800">
-                            Kategori: {selMed.kategori} | Satuan: {selMed.satuan} | Stok: {selMed.stok} | Rak: {selMed.lokasiRak || '-'}
-                          </p>
-                        </div>
-                      );
-                    })()}
-                  </div>
-
-                  <div className="lg:col-span-2">
-                    <label className="block text-[10px] font-bold text-gray-700 uppercase mb-0.5">Qty Masuk *</label>
-                    <input
-                      type="number" min="1" value={tempRecvQty} onChange={e => setTempRecvQty(Number(e.target.value))}
-                      className="w-full border border-gray-300 rounded-lg p-2 text-xs font-mono font-bold text-gray-900 bg-white focus:ring-2 focus:ring-indigo-500/20"
-                    />
-                  </div>
-
-                  <div className="lg:col-span-2">
-                    <label className="block text-[10px] font-bold text-gray-700 uppercase mb-0.5">Harga Beli Satuan (Rp)</label>
-                    <input
-                      type="number" min="0" value={tempRecvHarga} onChange={e => setTempRecvHarga(Number(e.target.value))}
-                      className="w-full border border-gray-300 rounded-lg p-2 text-xs font-mono font-bold text-gray-900 bg-white focus:ring-2 focus:ring-indigo-500/20"
-                    />
-                  </div>
-
-                  <div className="lg:col-span-2">
-                    <label className="block text-[10px] font-bold text-gray-700 uppercase mb-0.5">Diskon Item (%)</label>
-                    <input
-                      type="number" min="0" max="100" value={tempRecvDiskon} onChange={e => setTempRecvDiskon(Number(e.target.value))}
-                      className="w-full border border-gray-300 rounded-lg p-2 text-xs font-mono font-bold text-gray-900 bg-white focus:ring-2 focus:ring-indigo-500/20"
-                      placeholder="0"
-                    />
-                  </div>
-
-                  <div className="lg:col-span-2 flex items-end">
-                    <button
-                      type="button"
-                      onClick={addRecvItem}
-                      disabled={!tempRecvObatId || tempRecvQty <= 0}
-                      className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-200 text-white p-2 rounded-lg text-xs font-extrabold transition-colors flex items-center justify-center gap-1.5 shadow-xs"
-                    >
-                      <Plus className="w-4 h-4" />
-                      <span>+ Tambah Item</span>
-                    </button>
+              {selectedPOId && (
+                <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-xs flex items-center gap-2.5">
+                  <CheckCircle className="w-5 h-5 text-emerald-600 shrink-0" />
+                  <div>
+                    <p className="font-bold text-emerald-900">
+                      {recvItems.length} item otomatis dimuat dari PO — tanpa mengetik ulang.
+                    </p>
+                    <p className="text-[11px] text-emerald-800">
+                      Cukup cek kesesuaian dengan barang fisik: sesuaikan Qty Diterima bila ada selisih, serta isi No. Batch dan Expired Date (ED) tiap baris.
+                    </p>
                   </div>
                 </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1 border-t border-gray-100">
-                  <div>
-                    <label className="block text-[10px] font-semibold text-gray-400 mb-0.5">No. Batch Pabrik</label>
-                    <input
-                      type="text"
-                      value={tempRecvBatch}
-                      onChange={e => setTempRecvBatch(e.target.value)}
-                      placeholder="Contoh: B-89211"
-                      className="w-full border border-gray-200 rounded-lg p-1.5 text-xs font-mono"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-semibold text-gray-400 mb-0.5">Expired Date (ED)</label>
-                    <input
-                      type="date"
-                      value={tempRecvExp}
-                      onChange={e => setTempRecvExp(e.target.value)}
-                      className="w-full border border-gray-200 rounded-lg p-1.5 text-xs font-mono"
-                    />
-                  </div>
-                </div>
-              </div>
+              )}
 
               {/* Added Line Items Table */}
               {recvItems.length === 0 ? (
                 <div className="py-10 text-center text-xs text-gray-400 bg-white border border-dashed rounded-xl space-y-1">
                   <ShoppingBag className="w-8 h-8 text-gray-300 mx-auto mb-1" />
-                  <p className="font-semibold text-gray-600">Belum ada item obat dimasukkan ke faktur ini.</p>
-                  <p className="text-[11px] text-gray-400">Pilih obat di atas lalu klik "Tambah Item" atau muat dari Purchase Order (PO).</p>
+                  <p className="font-semibold text-gray-600">
+                    {selectedPOId ? 'Item dari PO sedang dimuat…' : 'Belum ada item barang untuk diverifikasi.'}
+                  </p>
+                  <p className="text-[11px] text-gray-400">
+                    {selectedPOId ? 'Jika item tidak muncul, pilih ulang PO di bagian atas.' : 'Pilih PO yang barangnya datang di bagian atas agar item otomatis terisi — tanpa mengetik ulang.'}
+                  </p>
                 </div>
               ) : (
                 <div className="border border-gray-200 rounded-xl overflow-hidden bg-white shadow-2xs">
@@ -1104,7 +875,8 @@ export default function PurchaseModule({ poItemsPrepopulate, clearPOItemsPrepopu
                         <tr className="bg-gray-100/70 border-b border-gray-200 text-gray-600 text-[10px] font-extrabold uppercase">
                           <th className="py-2.5 px-3">#</th>
                           <th className="py-2.5 px-3">Nama Obat</th>
-                          <th className="py-2.5 px-3 text-center">Qty</th>
+                          <th className="py-2.5 px-3 text-center">Qty Pesan (PO)</th>
+                          <th className="py-2.5 px-3 text-center">Qty Diterima</th>
                           <th className="py-2.5 px-3 text-right">Harga Beli</th>
                           <th className="py-2.5 px-3 text-center">Diskon (%)</th>
                           <th className="py-2.5 px-3 text-center">PPN 11%</th>
@@ -1126,6 +898,9 @@ export default function PurchaseModule({ poItemsPrepopulate, clearPOItemsPrepopu
                               <td className="py-2.5 px-3 font-mono text-[11px] text-gray-400">{idx + 1}</td>
                               <td className="py-2.5 px-3 font-extrabold text-gray-900">
                                 {item.namaObat || medicines.find(m => m.id === item.obatId)?.nama || 'Obat Tanpa Nama'}
+                              </td>
+                              <td className="py-2.5 px-3 text-center font-mono font-bold text-gray-600">
+                                {item.jumlahPesan}
                               </td>
                               <td className="py-2.5 px-3 text-center">
                                 <input
@@ -1241,16 +1016,16 @@ export default function PurchaseModule({ poItemsPrepopulate, clearPOItemsPrepopu
             </div>
 
             {/* Dynamic Form Validation Status Banner */}
-            {(!recvSupplierId || !recvNoFaktur.trim() || recvItems.length === 0) && (
+            {(!selectedPOId || !recvNoFaktur.trim() || recvItems.length === 0) && (
               <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs space-y-1.5">
                 <p className="font-bold text-amber-900 flex items-center gap-1.5">
                   <AlertCircle className="w-4 h-4 text-amber-600" />
                   <span>Lengkapi Syarat Berikut Agar Transaksi Dapat Diselesaikan:</span>
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[11px] pt-1">
-                  <div className={`p-2 rounded-lg border font-semibold flex items-center gap-1.5 ${recvSupplierId ? 'bg-emerald-50 text-emerald-800 border-emerald-200' : 'bg-white text-amber-800 border-amber-200'}`}>
-                    <span>{recvSupplierId ? '✓' : '⚠️'}</span>
-                    <span>1. Distributor: {recvSupplierId ? 'Sudah Dipilih' : 'Belum Dipilih'}</span>
+                  <div className={`p-2 rounded-lg border font-semibold flex items-center gap-1.5 ${selectedPOId ? 'bg-emerald-50 text-emerald-800 border-emerald-200' : 'bg-white text-amber-800 border-amber-200'}`}>
+                    <span>{selectedPOId ? '✓' : '⚠️'}</span>
+                    <span>1. PO Datang: {selectedPOId ? 'Sudah Dipilih' : 'Belum Dipilih'}</span>
                   </div>
                   <div className={`p-2 rounded-lg border font-semibold flex items-center gap-1.5 ${recvNoFaktur.trim() ? 'bg-emerald-50 text-emerald-800 border-emerald-200' : 'bg-white text-amber-800 border-amber-200'}`}>
                     <span>{recvNoFaktur.trim() ? '✓' : '⚠️'}</span>
@@ -1258,7 +1033,7 @@ export default function PurchaseModule({ poItemsPrepopulate, clearPOItemsPrepopu
                   </div>
                   <div className={`p-2 rounded-lg border font-semibold flex items-center gap-1.5 ${recvItems.length > 0 ? 'bg-emerald-50 text-emerald-800 border-emerald-200' : 'bg-white text-amber-800 border-amber-200'}`}>
                     <span>{recvItems.length > 0 ? '✓' : '⚠️'}</span>
-                    <span>3. Item Barang: {recvItems.length > 0 ? `${recvItems.length} Item Added` : 'Klik "+ Tambah Item"'}</span>
+                    <span>3. Item Barang: {recvItems.length > 0 ? `${recvItems.length} Item Dari PO` : 'Pilih PO di bagian atas'}</span>
                   </div>
                 </div>
               </div>
@@ -1268,7 +1043,7 @@ export default function PurchaseModule({ poItemsPrepopulate, clearPOItemsPrepopu
             <button
               type="submit"
               className={`w-full p-3.5 rounded-xl text-sm font-extrabold transition-all flex items-center justify-center gap-2 shadow-sm ${
-                recvSupplierId && recvNoFaktur.trim() && recvItems.length > 0
+                selectedPOId && recvNoFaktur.trim() && recvItems.length > 0
                   ? 'bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer ring-2 ring-emerald-500/20'
                   : 'bg-amber-600 hover:bg-amber-700 text-white cursor-pointer'
               }`}
@@ -1523,150 +1298,6 @@ export default function PurchaseModule({ poItemsPrepopulate, clearPOItemsPrepopu
               </button>
             </div>
           </form>
-        </div>
-      )}
-
-      {/* QUICK ADD SUPPLIER MODAL */}
-      {showAddSupplierModal && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-xl border border-gray-100 w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95">
-            <div className="p-4 bg-indigo-600 text-white flex items-center justify-between">
-              <h3 className="font-bold text-sm flex items-center gap-2">
-                <Building2 className="w-4 h-4" />
-                <span>Tambah Distributor / Supplier Baru</span>
-              </h3>
-              <button type="button" onClick={() => setShowAddSupplierModal(false)} className="text-indigo-200 hover:text-white">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <form onSubmit={handleQuickAddSupplierSubmit} className="p-4 space-y-3">
-              <div>
-                <label className="block text-[11px] font-semibold text-gray-600 uppercase mb-1">Nama Distributor / PBF *</label>
-                <input
-                  type="text" required value={newSupNama} onChange={e => setNewSupNama(e.target.value)}
-                  placeholder="Contoh: PT. Kalbe Farma Tbk"
-                  className="w-full border border-gray-200 rounded-lg p-2 text-xs font-semibold"
-                />
-              </div>
-              <div>
-                <label className="block text-[11px] font-semibold text-gray-600 uppercase mb-1">No. Telp / Sales Kontak</label>
-                <input
-                  type="text" value={newSupKontak} onChange={e => setNewSupKontak(e.target.value)}
-                  placeholder="0812-3456-7890"
-                  className="w-full border border-gray-200 rounded-lg p-2 text-xs font-mono"
-                />
-              </div>
-              <div>
-                <label className="block text-[11px] font-semibold text-gray-600 uppercase mb-1">Alamat Kantor / Depo</label>
-                <textarea
-                  rows={2} value={newSupAlamat} onChange={e => setNewSupAlamat(e.target.value)}
-                  placeholder="Jl. Raya PBF No. 123"
-                  className="w-full border border-gray-200 rounded-lg p-2 text-xs"
-                />
-              </div>
-              <div className="flex justify-end gap-2 pt-2 border-t border-gray-100">
-                <button
-                  type="button" onClick={() => setShowAddSupplierModal(false)}
-                  className="px-3 py-1.5 border border-gray-200 text-xs font-semibold text-gray-600 bg-white rounded-lg hover:bg-gray-100"
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg"
-                >
-                  Simpan Distributor
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* QUICK ADD MEDICINE MODAL */}
-      {showAddMedicineModal && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-xl border border-gray-100 w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95">
-            <div className="p-4 bg-indigo-600 text-white flex items-center justify-between">
-              <h3 className="font-bold text-sm flex items-center gap-2">
-                <Sparkles className="w-4 h-4" />
-                <span>Tambah Master Obat Baru</span>
-              </h3>
-              <button type="button" onClick={() => setShowAddMedicineModal(false)} className="text-indigo-200 hover:text-white">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <form onSubmit={handleQuickAddMedicineSubmit} className="p-4 space-y-3">
-              <div>
-                <label className="block text-[11px] font-semibold text-gray-600 uppercase mb-1">Nama Obat *</label>
-                <input
-                  type="text" required value={newMedNama} onChange={e => setNewMedNama(e.target.value)}
-                  placeholder="Contoh: Paracetamol 500mg"
-                  className="w-full border border-gray-200 rounded-lg p-2 text-xs font-bold"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[11px] font-semibold text-gray-600 uppercase mb-1">Kategori</label>
-                  <select
-                    value={newMedKategori} onChange={e => setNewMedKategori(e.target.value)}
-                    className="w-full border border-gray-200 rounded-lg p-2 text-xs bg-white"
-                  >
-                    <option value="Analgesik">Analgesik</option>
-                    <option value="Antibiotik">Antibiotik</option>
-                    <option value="Vitamin">Vitamin</option>
-                    <option value="Obat Bebas">Obat Bebas</option>
-                    <option value="Obat Keras">Obat Keras</option>
-                    <option value="Lainnya">Lainnya</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-[11px] font-semibold text-gray-600 uppercase mb-1">Satuan</label>
-                  <select
-                    value={newMedSatuan} onChange={e => setNewMedSatuan(e.target.value)}
-                    className="w-full border border-gray-200 rounded-lg p-2 text-xs bg-white"
-                  >
-                    <option value="Tablet">Tablet</option>
-                    <option value="Kapsul">Kapsul</option>
-                    <option value="Botol">Botol</option>
-                    <option value="Strip">Strip</option>
-                    <option value="Box">Box</option>
-                    <option value="Tube">Tube</option>
-                  </select>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[11px] font-semibold text-gray-600 uppercase mb-1">Harga Beli Est. (Rp)</label>
-                  <input
-                    type="number" min="0" value={newMedHargaBeli} onChange={e => setNewMedHargaBeli(Number(e.target.value))}
-                    className="w-full border border-gray-200 rounded-lg p-2 text-xs font-mono"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[11px] font-semibold text-gray-600 uppercase mb-1">Harga Jual (Rp)</label>
-                  <input
-                    type="number" min="0" value={newMedHargaJual} onChange={e => setNewMedHargaJual(Number(e.target.value))}
-                    className="w-full border border-gray-200 rounded-lg p-2 text-xs font-mono"
-                  />
-                </div>
-              </div>
-              <div className="flex justify-end gap-2 pt-2 border-t border-gray-100">
-                <button
-                  type="button" onClick={() => setShowAddMedicineModal(false)}
-                  className="px-3 py-1.5 border border-gray-200 text-xs font-semibold text-gray-600 bg-white rounded-lg hover:bg-gray-100"
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg"
-                >
-                  Simpan Master Obat
-                </button>
-              </div>
-            </form>
-          </div>
         </div>
       )}
     </div>
