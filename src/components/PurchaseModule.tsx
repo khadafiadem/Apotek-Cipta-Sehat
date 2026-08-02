@@ -31,6 +31,7 @@ interface PurchaseModuleProps {
 export default function PurchaseModule({ poItemsPrepopulate, clearPOItemsPrepopulate }: PurchaseModuleProps) {
   const {
     currentRole,
+    loggedInUser,
     medicines,
     suppliers,
     purchaseOrders, createPurchaseOrder, updatePOStatus, approvePurchaseOrder,
@@ -41,11 +42,16 @@ export default function PurchaseModule({ poItemsPrepopulate, clearPOItemsPrepopu
 
   const [activeSubTab, setActiveSubTab] = useState<'po' | 'terima' | 'retur' | 'hutang'>('po');
 
+  // User Vira diizinkan mengakses modul & approve PO apa pun role-nya
+  const isVira =
+    loggedInUser?.name?.toLowerCase().includes('vira') ||
+    loggedInUser?.email?.toLowerCase().includes('vira');
+
   // RBAC check
-  const isAuthorized = currentRole === 'admin' || currentRole === 'apoteker' || currentRole === 'manager' || currentRole === 'superadmin';
+  const isAuthorized = isVira || currentRole === 'admin' || currentRole === 'apoteker' || currentRole === 'manager' || currentRole === 'superadmin';
 
   // Manager approval privileges
-  const isManager = currentRole === 'manager' || currentRole === 'superadmin';
+  const isManager = isVira || currentRole === 'manager' || currentRole === 'superadmin';
 
   // PO list status filter (radio buttons)
   const [poStatusFilter, setPoStatusFilter] = useState<string>('semua');
