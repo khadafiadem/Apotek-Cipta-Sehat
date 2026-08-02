@@ -98,7 +98,6 @@ interface PharmacyContextType {
   createPurchaseOrder: (supplierId: string, items: Omit<POItem, 'total'>[]) => void;
   updatePOStatus: (id: string, status: PurchaseOrder['status']) => void;
   approvePurchaseOrder: (id: string) => void;
-  rejectPurchaseOrder: (id: string, alasan: string) => void;
   receivePurchaseOrder: (
     poId: string,
     receivedItems: ReceivedItem[],
@@ -596,7 +595,7 @@ export const PharmacyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const subtotal = items.reduce((sum, item) => sum + item.jumlah * item.hargaSatuan, 0);
     const newPO: PurchaseOrder = {
       id: genId('PO'), supplierId, supplierNama: supplier ? supplier.nama : 'Unknown',
-      tanggal: new Date().toISOString(), status: 'menunggu_approval',
+      tanggal: new Date().toISOString(), status: 'draft',
       items: items.map(item => ({ ...item, total: item.jumlah * item.hargaSatuan })), total: subtotal
     };
     setPurchaseOrders(prev => [...prev, newPO]);
@@ -611,14 +610,8 @@ export const PharmacyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   // MANAGER APPROVAL FLOW
   const approvePurchaseOrder = (id: string) => {
     const by = loggedInUser?.name || currentUserName;
-    setPurchaseOrders(prev => prev.map(po => po.id === id ? { ...po, status: 'approve', approvedBy: by, alasanReject: undefined } : po));
-    purchaseOrderService.updateApproval(id, 'approve', by).catch(e => console.error('Failed to approve PO:', e));
-  };
-
-  const rejectPurchaseOrder = (id: string, alasan: string) => {
-    const by = loggedInUser?.name || currentUserName;
-    setPurchaseOrders(prev => prev.map(po => po.id === id ? { ...po, status: 'di_reject', approvedBy: by, alasanReject: alasan } : po));
-    purchaseOrderService.updateApproval(id, 'di_reject', by, alasan).catch(e => console.error('Failed to reject PO:', e));
+    setPurchaseOrders(prev => prev.map(po => po.id === id ? { ...po, status: 'dipesan', approvedBy: by, alasanReject: undefined } : po));
+    purchaseOrderService.updateApproval(id, 'dipesan', by).catch(e => console.error('Failed to approve PO:', e));
   };
 
   // RECEIVE GOODS DIRECT OR FROM PO
@@ -1250,7 +1243,7 @@ export const PharmacyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       addSupplier, updateSupplier, deleteSupplier,
       addCustomer, updateCustomer, deleteCustomer,
       addDoctor, updateDoctor, deleteDoctor,
-      createPurchaseOrder, updatePOStatus, approvePurchaseOrder, rejectPurchaseOrder, receivePurchaseOrder, createDirectReceiving,
+      createPurchaseOrder, updatePOStatus, approvePurchaseOrder, receivePurchaseOrder, createDirectReceiving,
       returnPurchase, payDebt,
       checkoutSales, returnSales, cancelSalesTransaction, payCredit,
       addStockOpname, addCashJournalEntry,

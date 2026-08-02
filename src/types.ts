@@ -62,7 +62,7 @@ export interface PurchaseOrder {
   supplierId: string;
   supplierNama: string;
   tanggal: string;
-  status: 'draft' | 'menunggu_approval' | 'approve' | 'dipesan' | 'diterima' | 'di_reject' | 'batal';
+  status: 'draft' | 'dipesan' | 'diterima' | 'batal';
   items: POItem[];
   total: number;
   approvedBy?: string;

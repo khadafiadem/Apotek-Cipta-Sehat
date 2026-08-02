@@ -33,7 +33,7 @@ export default function PurchaseModule({ poItemsPrepopulate, clearPOItemsPrepopu
     currentRole,
     medicines,
     suppliers,
-    purchaseOrders, createPurchaseOrder, updatePOStatus, approvePurchaseOrder, rejectPurchaseOrder,
+    purchaseOrders, createPurchaseOrder, updatePOStatus, approvePurchaseOrder,
     createDirectReceiving,
     returnPurchases, returnPurchase,
     supplierDebts, payDebt
@@ -49,10 +49,6 @@ export default function PurchaseModule({ poItemsPrepopulate, clearPOItemsPrepopu
 
   // PO list status filter (radio buttons)
   const [poStatusFilter, setPoStatusFilter] = useState<string>('semua');
-
-  // Rejection dialog state
-  const [rejectTargetPO, setRejectTargetPO] = useState<PurchaseOrder | null>(null);
-  const [rejectReason, setRejectReason] = useState('');
 
   // Resolve PO item name: prefer saved namaObat, fallback to medicines table, then raw obatId
   const getPOItemName = (item: { obatId: string; namaObat?: string }) => {
@@ -149,7 +145,7 @@ export default function PurchaseModule({ poItemsPrepopulate, clearPOItemsPrepopu
     // Reset state
     setPoItems([]);
     setSelectedSupplierId('');
-    alert('Purchase Order (PO) berhasil dibuat dan dikirim untuk persetujuan Manager.');
+    alert('Purchase Order (PO) berhasil dibuat sebagai Draft dan menunggu persetujuan Manager.');
   };
 
   // Recommend low stock items
@@ -595,11 +591,10 @@ export default function PurchaseModule({ poItemsPrepopulate, clearPOItemsPrepopu
             <div className="flex flex-wrap gap-1.5">
               {[
                 { key: 'semua', label: 'Semua' },
-                { key: 'menunggu_approval', label: 'Menunggu Approval' },
-                { key: 'approve', label: 'Approve' },
+                { key: 'draft', label: 'Draft' },
                 { key: 'dipesan', label: 'Dipesan' },
-                { key: 'diterima', label: 'Diterima' },
-                { key: 'di_reject', label: 'Di Reject' }
+                { key: 'diterima', label: 'Barang diterima' },
+                { key: 'batal', label: 'Batal' }
               ].map(opt => (
                 <label
                   key={opt.key}
@@ -632,17 +627,13 @@ export default function PurchaseModule({ poItemsPrepopulate, clearPOItemsPrepopu
                   .filter(po => poStatusFilter === 'semua' || po.status === poStatusFilter)
                   .map(po => {
                   const statusColors: Record<string, string> = {
-                    draft: 'bg-gray-100 text-gray-700 border-gray-200',
-                    menunggu_approval: 'bg-amber-50 text-amber-700 border-amber-200',
-                    approve: 'bg-teal-50 text-teal-700 border-teal-200',
+                    draft: 'bg-amber-50 text-amber-700 border-amber-200',
                     dipesan: 'bg-blue-50 text-blue-700 border-blue-200',
                     diterima: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-                    di_reject: 'bg-rose-50 text-rose-700 border-rose-200',
                     batal: 'bg-gray-100 text-gray-500 border-gray-200'
                   };
                   const statusLabels: Record<string, string> = {
-                    draft: 'Draft', menunggu_approval: 'Menunggu Approval', approve: 'Approve',
-                    dipesan: 'Dipesan', diterima: 'Diterima', di_reject: 'Di Reject', batal: 'Batal'
+                    draft: 'Draft', dipesan: 'Dipesan', diterima: 'Barang diterima', batal: 'Batal'
                   };
 
                   return (
@@ -674,19 +665,7 @@ export default function PurchaseModule({ poItemsPrepopulate, clearPOItemsPrepopu
                         </div>
                       </div>
 
-                      {po.status === 'di_reject' && (
-                        <div className="p-2 bg-rose-50 border border-rose-200 rounded text-[10px] space-y-0.5">
-                          <p className="font-bold text-rose-700 flex items-center gap-1">
-                            <ShieldX className="w-3 h-3" />
-                            Ditolak oleh {po.approvedBy || 'Manager'}
-                          </p>
-                          {po.alasanReject && (
-                            <p className="text-rose-600">Alasan: {po.alasanReject}</p>
-                          )}
-                        </div>
-                      )}
-
-                      {po.status === 'menunggu_approval' && (
+                      {po.status === 'draft' && (
                         isManager ? (
                           <div className="flex gap-1 border-t border-gray-100 pt-2">
                             <button
@@ -696,10 +675,10 @@ export default function PurchaseModule({ poItemsPrepopulate, clearPOItemsPrepopu
                               Approve
                             </button>
                             <button
-                              onClick={() => { setRejectTargetPO(po); setRejectReason(''); }}
-                              className="flex-1 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 p-1 rounded text-[10px] font-semibold transition-colors text-center"
+                              onClick={() => updatePOStatus(po.id, 'batal')}
+                              className="bg-white hover:bg-rose-50 text-rose-600 border border-rose-200 p-1 rounded text-[10px] font-semibold transition-colors"
                             >
-                              Reject
+                              Batal
                             </button>
                           </div>
                         ) : (
@@ -707,23 +686,6 @@ export default function PurchaseModule({ poItemsPrepopulate, clearPOItemsPrepopu
                             Menunggu persetujuan Manager
                           </div>
                         )
-                      )}
-
-                      {po.status === 'approve' && (
-                        <div className="flex gap-1 border-t border-gray-100 pt-2">
-                          <button
-                            onClick={() => updatePOStatus(po.id, 'dipesan')}
-                            className="flex-1 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 p-1 rounded text-[10px] font-semibold transition-colors text-center"
-                          >
-                            Kirim ke Supplier
-                          </button>
-                          <button
-                            onClick={() => updatePOStatus(po.id, 'batal')}
-                            className="bg-white hover:bg-rose-50 text-rose-600 border border-rose-200 p-1 rounded text-[10px] font-semibold transition-colors"
-                          >
-                            Batal
-                          </button>
-                        </div>
                       )}
 
                       {po.status === 'dipesan' && (
@@ -1415,70 +1377,6 @@ export default function PurchaseModule({ poItemsPrepopulate, clearPOItemsPrepopu
                 className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-md"
               >
                 Konfirmasi Pelunasan
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
-
-      {/* REJECT PO REASON DIALOG */}
-      {rejectTargetPO && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-          <form
-            onSubmit={e => {
-              e.preventDefault();
-              if (!rejectReason.trim()) {
-                alert('Alasan penolakan wajib diisi.');
-                return;
-              }
-              rejectPurchaseOrder(rejectTargetPO.id, rejectReason.trim());
-              setRejectTargetPO(null);
-              setRejectReason('');
-            }}
-            className="bg-white rounded-xl shadow-lg border border-gray-100 max-w-md w-full overflow-hidden"
-          >
-            <div className="bg-rose-50 border-b border-rose-100 px-5 py-4 flex items-center justify-between">
-              <h3 className="font-bold text-sm uppercase tracking-wider text-rose-700 flex items-center gap-1.5">
-                <ShieldX className="w-4 h-4 text-rose-600" />
-                <span>Penolakan Purchase Order</span>
-              </h3>
-              <button type="button" onClick={() => setRejectTargetPO(null)} className="text-gray-400 hover:text-gray-600 font-bold text-xs">✕</button>
-            </div>
-
-            <div className="p-5 space-y-4 text-xs">
-              <div className="p-3 bg-gray-50 rounded-lg border border-gray-100 text-[10px] space-y-0.5">
-                <p className="font-mono font-bold text-indigo-700">{rejectTargetPO.id}</p>
-                <p className="font-bold text-gray-900">{rejectTargetPO.supplierNama}</p>
-                <p className="text-gray-500 font-mono">Total: Rp {rejectTargetPO.total.toLocaleString('id-ID')}</p>
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-1">
-                  Alasan Penolakan *
-                </label>
-                <textarea
-                  required
-                  value={rejectReason}
-                  onChange={e => setRejectReason(e.target.value)}
-                  rows={3}
-                  placeholder="Contoh: Harga tidak sesuai anggaran, item perlu dikurangi, supplier kurang terpercaya…"
-                  className="w-full border border-gray-200 rounded-lg p-2 text-xs focus:ring-2 focus:ring-rose-500/20 focus:border-rose-400 outline-none"
-                />
-              </div>
-            </div>
-
-            <div className="bg-gray-50 p-4 border-t border-gray-100 flex items-center justify-end gap-2">
-              <button
-                type="button" onClick={() => setRejectTargetPO(null)}
-                className="px-3 py-1.5 border border-gray-200 text-xs font-semibold text-gray-600 bg-white rounded-md hover:bg-gray-100"
-              >
-                Batal
-              </button>
-              <button
-                type="submit"
-                className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold rounded-md"
-              >
-                Tolak & Simpan Alasan
               </button>
             </div>
           </form>

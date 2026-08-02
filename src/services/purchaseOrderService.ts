@@ -17,13 +17,23 @@ function toRow(po: PurchaseOrder) {
   };
 }
 
+const NORMALIZED_STATUS: Record<string, PurchaseOrder['status']> = {
+  menunggu_approval: 'draft',
+  approve: 'dipesan',
+  di_reject: 'batal',
+};
+
+function normalizeStatus(status: string): PurchaseOrder['status'] {
+  return NORMALIZED_STATUS[status] || (status as PurchaseOrder['status']);
+}
+
 function toPO(row: Record<string, unknown>): PurchaseOrder {
   return {
     id: row.id as string,
     supplierId: row.supplier_id as string,
     supplierNama: row.supplier_nama as string,
     tanggal: row.tanggal as string,
-    status: row.status as PurchaseOrder['status'],
+    status: normalizeStatus(row.status as string),
     items: row.items as PurchaseOrder['items'],
     total: Number(row.total),
     approvedBy: (row.approved_by as string) || undefined,
