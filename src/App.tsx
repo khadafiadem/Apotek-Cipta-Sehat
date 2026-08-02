@@ -99,7 +99,14 @@ function MainAppShell() {
       try {
         const users = await userService.getAll();
         if (users.length > 0) {
-          setAllUsers(users);
+          const hasManager = users.some(u => u.email?.toLowerCase() === 'manager@ciptasehat.com');
+          if (!hasManager) {
+            const manager = { id: 'USR-5', name: 'Manager Operasional', role: 'manager' as const, email: 'manager@ciptasehat.com', password: 'test' };
+            try { await userService.add(manager.id, manager); } catch {}
+            setAllUsers([...users, manager]);
+          } else {
+            setAllUsers(users);
+          }
         } else {
           const defaults = getDefaultUsers();
           for (const u of defaults) {
@@ -128,7 +135,8 @@ function MainAppShell() {
     { id: 'USR-1', name: 'Ahmad Cipta', role: 'admin' as const, email: 'ahmad@ciptasehat.com', password: 'test' },
     { id: 'USR-2', name: 'Apt. Rahmawati', role: 'apoteker' as const, email: 'rahma@ciptasehat.com', password: 'test' },
     { id: 'USR-3', name: 'Siska Amelia', role: 'kasir' as const, email: 'siska@ciptasehat.com', password: 'test' },
-    { id: 'USR-4', name: 'Mohammad Khadafi', role: 'superadmin' as const, email: 'Dafi@ciptasehat.com', password: 'test' }
+    { id: 'USR-4', name: 'Mohammad Khadafi', role: 'superadmin' as const, email: 'Dafi@ciptasehat.com', password: 'test' },
+    { id: 'USR-5', name: 'Manager Operasional', role: 'manager' as const, email: 'manager@ciptasehat.com', password: 'test' }
   ];
 
   const handleLoginSuccess = (user: User) => {
@@ -149,7 +157,7 @@ function MainAppShell() {
 
   const getActiveUserName = () => {
     const user = allUsers.find(u => u.role === currentRole);
-    return user ? user.name : (currentRole === 'superadmin' ? 'Super Admin' : currentRole === 'admin' ? 'Administrator' : currentRole);
+    return user ? user.name : (currentRole === 'superadmin' ? 'Super Admin' : currentRole === 'admin' ? 'Administrator' : currentRole === 'manager' ? 'Manager' : currentRole);
   };
 
   // States for cross-module prepopulate suggestions
@@ -235,6 +243,8 @@ function MainAppShell() {
         return 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20';
       case 'kasir':
         return 'bg-amber-500/10 text-amber-400 border-amber-500/20';
+      case 'manager':
+        return 'bg-teal-500/10 text-teal-400 border-teal-500/20';
       default:
         return 'bg-slate-800 text-slate-400 border-slate-700';
     }
@@ -276,7 +286,7 @@ function MainAppShell() {
             <div className="min-w-0">
               <p className="text-sm font-semibold text-white capitalize truncate">{getActiveUserName()}</p>
               <span className={`inline-block text-[9px] px-2 py-0.5 rounded border font-bold uppercase mt-1 ${getRoleBadgeStyle(currentRole)}`}>
-                {currentRole === 'superadmin' ? 'Super Admin' : currentRole === 'admin' ? 'Administrator' : currentRole.toUpperCase()}
+                {currentRole === 'superadmin' ? 'Super Admin' : currentRole === 'admin' ? 'Administrator' : currentRole === 'manager' ? 'Manager' : currentRole.toUpperCase()}
               </span>
             </div>
           </div>

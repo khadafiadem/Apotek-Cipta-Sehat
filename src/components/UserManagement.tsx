@@ -45,13 +45,22 @@ export default function UserManagement() {
         const defaults = getDefaultUsers();
         if (stored.length > 0) {
           const hasKhadafi = stored.some(u => u.email?.toLowerCase() === 'dafi@ciptasehat.com');
+          const hasManager = stored.some(u => u.email?.toLowerCase() === 'manager@ciptasehat.com');
+          const newOnes: User[] = [];
           if (!hasKhadafi) {
             const khadafi = defaults.find(u => u.email?.toLowerCase() === 'dafi@ciptasehat.com');
-            if (khadafi) {
-              try { await userService.add(khadafi.id, khadafi); } catch {}
-              setUsers([...stored, khadafi]);
-              return;
+            if (khadafi) newOnes.push(khadafi);
+          }
+          if (!hasManager) {
+            const manager = defaults.find(u => u.email?.toLowerCase() === 'manager@ciptasehat.com');
+            if (manager) newOnes.push(manager);
+          }
+          if (newOnes.length > 0) {
+            for (const u of newOnes) {
+              try { await userService.add(u.id, u); } catch {}
             }
+            setUsers([...stored, ...newOnes]);
+            return;
           }
           setUsers(stored);
         } else {
@@ -71,7 +80,8 @@ export default function UserManagement() {
     { id: 'USR-1', name: 'Ahmad Cipta', role: 'admin', email: 'ahmad@ciptasehat.com', password: 'test' },
     { id: 'USR-2', name: 'Apt. Rahmawati', role: 'apoteker', email: 'rahma@ciptasehat.com', password: 'test' },
     { id: 'USR-3', name: 'Siska Amelia', role: 'kasir', email: 'siska@ciptasehat.com', password: 'test' },
-    { id: 'USR-4', name: 'Mohammad Khadafi', role: 'superadmin', email: 'Dafi@ciptasehat.com', password: 'test' }
+    { id: 'USR-4', name: 'Mohammad Khadafi', role: 'superadmin', email: 'Dafi@ciptasehat.com', password: 'test' },
+    { id: 'USR-5', name: 'Manager Operasional', role: 'manager', email: 'manager@ciptasehat.com', password: 'test' }
   ];
 
   const saveUsers = (updatedUsers: User[]) => {
@@ -199,6 +209,8 @@ export default function UserManagement() {
         return 'bg-indigo-50 text-indigo-700 border-indigo-200';
       case 'kasir':
         return 'bg-amber-50 text-amber-700 border-amber-200';
+      case 'manager':
+        return 'bg-teal-50 text-teal-700 border-teal-200';
       default:
         return 'bg-slate-50 text-slate-700 border-slate-200';
     }
@@ -214,6 +226,8 @@ export default function UserManagement() {
         return 'Akses operasional klinis, mengelola resep dokter, merancang purchase order (PO) pengadaan, mengaudit stok fisik, dan analisis rugi laba.';
       case 'kasir':
         return 'Hak akses terbatas khusus modul kasir transaksi penjualan (POS). Hanya dapat membaca data master obat dan tidak diizinkan masuk ke laporan keuangan.';
+      case 'manager':
+        return 'Hak akses persetujuan (approval) Purchase Order. Berwenang menyetujui atau menolak PO yang diajukan serta memantau alur pengadaan pembelian.';
       default:
         return '';
     }
@@ -239,7 +253,7 @@ export default function UserManagement() {
 
       {/* ACTIVE ROLE EXPLANATION / BANNER */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {['superadmin', 'admin', 'apoteker', 'kasir'].map((role) => {
+        {['superadmin', 'admin', 'apoteker', 'kasir', 'manager'].map((role) => {
           const isActive = currentRole === role;
           return (
             <div
@@ -261,7 +275,7 @@ export default function UserManagement() {
                   {isActive && <UserCheck className="w-4 h-4 text-white" />}
                 </div>
                 <h3 className="text-sm font-bold mt-3 capitalize">
-                  {role === 'superadmin' ? 'Super Admin' : role === 'admin' ? 'Administrator' : role === 'apoteker' ? 'Apoteker PJ' : 'Staff Kasir'}
+                  {role === 'superadmin' ? 'Super Admin' : role === 'admin' ? 'Administrator' : role === 'apoteker' ? 'Apoteker PJ' : role === 'manager' ? 'Manager' : 'Staff Kasir'}
                 </h3>
                 <p className={`text-[11px] mt-1 line-clamp-3 ${isActive ? 'text-white/80' : 'text-slate-400'}`}>
                   {getRoleDescription(role)}
@@ -305,6 +319,7 @@ export default function UserManagement() {
               <option value="admin">Administrator (Admin)</option>
               <option value="apoteker">Apoteker PJ</option>
               <option value="kasir">Staff Kasir</option>
+              <option value="manager">Manager</option>
             </select>
           </div>
 
@@ -503,6 +518,7 @@ export default function UserManagement() {
                   <option value="admin">Administrator (Full System Access)</option>
                   <option value="apoteker">Apoteker (Operational & Clinical)</option>
                   <option value="kasir">Staff Kasir (Sales POS Only)</option>
+                  <option value="manager">Manager (Approval PO)</option>
                 </select>
               </div>
 

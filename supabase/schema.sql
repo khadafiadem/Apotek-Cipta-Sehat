@@ -51,7 +51,9 @@ CREATE TABLE IF NOT EXISTS purchase_orders (
   tanggal TEXT NOT NULL,
   status TEXT DEFAULT 'draft',
   items JSONB DEFAULT '[]'::jsonb,
-  total NUMERIC DEFAULT 0
+  total NUMERIC DEFAULT 0,
+  approved_by TEXT DEFAULT '',
+  alasan_reject TEXT DEFAULT ''
 );
 
 -- 6. TABEL PENERIMAAN BARANG
@@ -192,7 +194,7 @@ CREATE TABLE IF NOT EXISTS users (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
   email TEXT UNIQUE NOT NULL,
-  role TEXT NOT NULL CHECK (role IN ('admin', 'apoteker', 'kasir')),
+  role TEXT NOT NULL CHECK (role IN ('admin', 'apoteker', 'kasir', 'manager')),
   password TEXT DEFAULT ''
 );
 

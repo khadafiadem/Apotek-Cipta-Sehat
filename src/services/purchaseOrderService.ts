@@ -12,6 +12,8 @@ function toRow(po: PurchaseOrder) {
     status: po.status,
     items: po.items,
     total: po.total,
+    approved_by: po.approvedBy || '',
+    alasan_reject: po.alasanReject || '',
   };
 }
 
@@ -24,6 +26,8 @@ function toPO(row: Record<string, unknown>): PurchaseOrder {
     status: row.status as PurchaseOrder['status'],
     items: row.items as PurchaseOrder['items'],
     total: Number(row.total),
+    approvedBy: (row.approved_by as string) || undefined,
+    alasanReject: (row.alasan_reject as string) || undefined,
   };
 }
 
@@ -41,6 +45,13 @@ export const purchaseOrderService = {
 
   async updateStatus(id: string, status: PurchaseOrder['status']): Promise<void> {
     const { error } = await supabase.from(TABLE).update({ status }).eq('id', id);
+    if (error) throw error;
+  },
+
+  async updateApproval(id: string, status: PurchaseOrder['status'], approvedBy?: string, alasanReject?: string): Promise<void> {
+    const { error } = await supabase.from(TABLE)
+      .update({ status, approved_by: approvedBy || '', alasan_reject: alasanReject || '' })
+      .eq('id', id);
     if (error) throw error;
   },
 

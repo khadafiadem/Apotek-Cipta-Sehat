@@ -32,7 +32,8 @@ export default function Login({ onLoginSuccess }: LoginProps) {
     { id: 'USR-1', name: 'Ahmad Cipta', role: 'admin', email: 'ahmad@ciptasehat.com', password: 'test' },
     { id: 'USR-2', name: 'Apt. Rahmawati', role: 'apoteker', email: 'rahma@ciptasehat.com', password: 'test' },
     { id: 'USR-3', name: 'Siska Amelia', role: 'kasir', email: 'siska@ciptasehat.com', password: 'test' },
-    { id: 'USR-4', name: 'Mohammad Khadafi', role: 'superadmin', email: 'Dafi@ciptasehat.com', password: 'test' }
+    { id: 'USR-4', name: 'Mohammad Khadafi', role: 'superadmin', email: 'Dafi@ciptasehat.com', password: 'test' },
+    { id: 'USR-5', name: 'Manager Operasional', role: 'manager', email: 'manager@ciptasehat.com', password: 'test' }
   ];
 
   // Load registered users from Supabase
@@ -43,15 +44,24 @@ export default function Login({ onLoginSuccess }: LoginProps) {
         const defaults = getDefaultUsers();
         if (stored.length > 0) {
           const hasKhadafi = stored.some(u => u.email?.toLowerCase() === 'dafi@ciptasehat.com');
+          const hasManager = stored.some(u => u.email?.toLowerCase() === 'manager@ciptasehat.com');
+          const newOnes: User[] = [];
           if (!hasKhadafi) {
             const khadafi = defaults.find(u => u.email?.toLowerCase() === 'dafi@ciptasehat.com');
-            if (khadafi) {
-              try { await userService.add(khadafi.id, khadafi); } catch {}
-              const updated = [...stored, khadafi];
-              setUsers(updated);
-              setSelectedUserId(updated[0].id);
-              return;
+            if (khadafi) newOnes.push(khadafi);
+          }
+          if (!hasManager) {
+            const manager = defaults.find(u => u.email?.toLowerCase() === 'manager@ciptasehat.com');
+            if (manager) newOnes.push(manager);
+          }
+          if (newOnes.length > 0) {
+            for (const u of newOnes) {
+              try { await userService.add(u.id, u); } catch {}
             }
+            const updated = [...stored, ...newOnes];
+            setUsers(updated);
+            setSelectedUserId(updated[0].id);
+            return;
           }
           setUsers(stored);
           setSelectedUserId(stored[0].id);
@@ -108,6 +118,8 @@ export default function Login({ onLoginSuccess }: LoginProps) {
         return 'bg-indigo-50 text-indigo-700 border-indigo-200';
       case 'kasir':
         return 'bg-amber-50 text-amber-700 border-amber-200';
+      case 'manager':
+        return 'bg-teal-50 text-teal-700 border-teal-200';
       default:
         return 'bg-slate-50 text-slate-700 border-slate-200';
     }

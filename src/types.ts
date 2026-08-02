@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-export type UserRole = 'superadmin' | 'admin' | 'apoteker' | 'kasir';
+export type UserRole = 'superadmin' | 'admin' | 'apoteker' | 'kasir' | 'manager';
 
 export interface User {
   id: string;
@@ -62,9 +62,11 @@ export interface PurchaseOrder {
   supplierId: string;
   supplierNama: string;
   tanggal: string;
-  status: 'draft' | 'dipesan' | 'diterima' | 'batal';
+  status: 'draft' | 'menunggu_approval' | 'approve' | 'dipesan' | 'diterima' | 'di_reject' | 'batal';
   items: POItem[];
   total: number;
+  approvedBy?: string;
+  alasanReject?: string;
 }
 
 export interface ReceivedItem {
