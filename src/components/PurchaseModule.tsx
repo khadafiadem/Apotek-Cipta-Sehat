@@ -24,7 +24,8 @@ import {
   X,
   Calculator,
   Percent,
-  ShoppingBag
+  ShoppingBag,
+  Search
 } from 'lucide-react';
 
 interface PurchaseModuleProps {
@@ -57,6 +58,16 @@ export default function PurchaseModule({ poItemsPrepopulate, clearPOItemsPrepopu
   const [tempObatId, setTempObatId] = useState('');
   const [tempQty, setTempQty] = useState(10);
   const [tempHarga, setTempHarga] = useState(0);
+  const [obatSearch, setObatSearch] = useState('');
+
+  // Searchable medicine list (stok kosong tampil paling atas)
+  const filteredMeds = medicines
+    .filter(m => m.nama.toLowerCase().includes(obatSearch.trim().toLowerCase()))
+    .sort(
+      (a, b) =>
+        (a.stok === 0 ? -1 : 1) - (b.stok === 0 ? -1 : 1) ||
+        a.nama.localeCompare(b.nama)
+    );
 
   // Auto-fill from prepopulate
   useEffect(() => {
@@ -517,17 +528,54 @@ export default function PurchaseModule({ poItemsPrepopulate, clearPOItemsPrepopu
                 </h4>
                 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div className="sm:col-span-3">
-                    <select
-                      value={tempObatId}
-                      onChange={e => setTempObatId(e.target.value)}
-                      className="w-full border border-gray-200 bg-white rounded-lg p-2 text-xs"
-                    >
-                      <option value="">-- Pilih Obat --</option>
-                      {medicines.map(m => (
-                        <option key={m.id} value={m.id}>{m.nama} (Stok: {m.stok} | Min: {m.stokMin})</option>
-                      ))}
-                    </select>
+                  <div className="sm:col-span-3 space-y-2">
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+                      <input
+                        type="text"
+                        value={obatSearch}
+                        onChange={e => setObatSearch(e.target.value)}
+                        onKeyDown={e => { if (e.key === 'Enter') e.preventDefault(); }}
+                        placeholder="Cari nama obat untuk dipesan… (mis. amoxicillin)"
+                        autoComplete="off"
+                        className="w-full border border-gray-200 bg-white rounded-lg pl-8 pr-3 py-2 text-xs focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none"
+                      />
+                    </div>
+
+                    <div className="border border-gray-200 rounded-lg bg-white divide-y divide-gray-100 max-h-44 overflow-y-auto">
+                      {filteredMeds.length === 0 ? (
+                        <div className="p-3 text-xs text-gray-400 text-center">
+                          Obat "{obatSearch}" tidak ditemukan.
+                        </div>
+                      ) : (
+                        filteredMeds.map(m => {
+                          const selected = tempObatId === m.id;
+                          return (
+                            <button
+                              key={m.id}
+                              type="button"
+                              onClick={() => setTempObatId(m.id)}
+                              className={`w-full text-left px-3 py-2 flex items-center justify-between gap-2 transition-colors ${
+                                selected ? 'bg-indigo-50 ring-1 ring-inset ring-indigo-200' : 'hover:bg-indigo-50/50'
+                              }`}
+                            >
+                              <div className="min-w-0">
+                                <p className="text-xs font-semibold text-gray-900 truncate">
+                                  {m.nama}
+                                  {m.stok === 0 && (
+                                    <span className="ml-1.5 text-[9px] font-bold text-rose-600 bg-rose-50 border border-rose-100 rounded px-1 py-0.5 align-middle">KOSONG</span>
+                                  )}
+                                </p>
+                                <p className="text-[10px] text-gray-400 font-mono">
+                                  Stok: {m.stok} | Min: {m.stokMin} | Harga Beli: Rp {m.hargaBeli.toLocaleString('id-ID')}
+                                </p>
+                              </div>
+                              {selected && <CheckCircle className="w-4 h-4 text-indigo-600 shrink-0" />}
+                            </button>
+                          );
+                        })
+                      )}
+                    </div>
                   </div>
                   <div>
                     <label className="block text-[10px] text-gray-400 mb-0.5">Jumlah (Pcs/Botol)</label>
