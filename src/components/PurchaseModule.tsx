@@ -42,16 +42,16 @@ export default function PurchaseModule({ poItemsPrepopulate, clearPOItemsPrepopu
 
   const [activeSubTab, setActiveSubTab] = useState<'po' | 'terima' | 'retur' | 'hutang'>('po');
 
-  // User Vira diizinkan mengakses modul & approve PO apa pun role-nya
-  const isVira =
-    loggedInUser?.name?.toLowerCase().includes('vira') ||
-    loggedInUser?.email?.toLowerCase().includes('vira');
+  // User Fira diizinkan mengakses modul & approve PO apa pun role-nya
+  const isFira =
+    loggedInUser?.name?.toLowerCase().includes('fira') ||
+    loggedInUser?.email?.toLowerCase().includes('fira');
 
   // RBAC check
-  const isAuthorized = isVira || currentRole === 'admin' || currentRole === 'apoteker' || currentRole === 'manager' || currentRole === 'superadmin';
+  const isAuthorized = isFira || currentRole === 'admin' || currentRole === 'apoteker' || currentRole === 'manager' || currentRole === 'superadmin';
 
   // Manager approval privileges
-  const isManager = isVira || currentRole === 'manager' || currentRole === 'superadmin';
+  const isManager = isFira || currentRole === 'manager' || currentRole === 'superadmin';
 
   // PO list status filter (radio buttons)
   const [poStatusFilter, setPoStatusFilter] = useState<string>('semua');
