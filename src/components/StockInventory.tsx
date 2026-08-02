@@ -16,7 +16,8 @@ import {
   PlusCircle,
   Clock,
   Archive,
-  Info
+  Info,
+  Search
 } from 'lucide-react';
 
 export default function StockInventory() {
@@ -28,7 +29,7 @@ export default function StockInventory() {
   } = usePharmacy();
 
   const [activeSubTab, setActiveSubTab] = useState<'card' | 'alerts' | 'opname'>('card');
-  const [selectedMedFilter, setSelectedMedFilter] = useState('');
+  const [medSearch, setMedSearch] = useState('');
   const [selectedTypeFilter, setSelectedTypeFilter] = useState('');
 
   // Stock opname builder state
@@ -44,7 +45,7 @@ export default function StockInventory() {
 
   // Filters for stock cards
   const filteredCards = stockCards.filter(card => {
-    const matchMed = selectedMedFilter === '' || card.obatId === selectedMedFilter;
+    const matchMed = medSearch.trim() === '' || card.namaObat.toLowerCase().includes(medSearch.trim().toLowerCase());
     const matchType = selectedTypeFilter === '' || card.tipe === selectedTypeFilter;
     return matchMed && matchType;
   }).sort((a, b) => new Date(b.tanggal).getTime() - new Date(a.tanggal).getTime());
@@ -180,17 +181,27 @@ export default function StockInventory() {
           {/* Filters section */}
           <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-xs flex flex-col sm:flex-row gap-3">
             <div className="flex-1">
-              <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Filter Berdasarkan Nama Obat</label>
-              <select
-                value={selectedMedFilter}
-                onChange={e => setSelectedMedFilter(e.target.value)}
-                className="w-full border border-gray-200 bg-white rounded-lg p-2 text-xs"
-              >
-                <option value="">-- Tampilkan Semua Obat --</option>
-                {medicines.map(m => (
-                  <option key={m.id} value={m.id}>{m.nama} (ID: {m.id})</option>
-                ))}
-              </select>
+              <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Cari Nama Obat</label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+                <input
+                  type="text"
+                  value={medSearch}
+                  onChange={e => setMedSearch(e.target.value)}
+                  placeholder="Ketik nama obat… (mis. Paracetamol)"
+                  autoComplete="off"
+                  className="w-full border border-gray-200 bg-white rounded-lg pl-8 pr-8 py-2 text-xs focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none"
+                />
+                {medSearch && (
+                  <button
+                    type="button"
+                    onClick={() => setMedSearch('')}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-bold text-indigo-600 hover:text-indigo-800 bg-indigo-50 border border-indigo-100 px-1.5 py-0.5 rounded"
+                  >
+                    Reset
+                  </button>
+                )}
+              </div>
             </div>
             <div className="w-full sm:w-64">
               <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Filter Berdasarkan Tipe Mutasi</label>
