@@ -19,7 +19,7 @@ import {
 
 export default function SettingsBackup() {
   const {
-    currentRole,
+    currentRole, setRole,
     exportDatabase, importDatabase, resetDatabase, syncToSupabase
   } = usePharmacy();
 
@@ -95,64 +95,63 @@ export default function SettingsBackup() {
           Pengaturan Sistem & Ekspor Backup
         </h1>
         <p className="text-sm text-gray-500">
-          Lihat hak akses RBAC akun Anda, lakukan pencadangan data komprehensif, atau pulihkan database offline.
+          Ubah hak akses simulasi RBAC pengguna, lakukan pencadangan data komprehensif, atau pulihkan database offline.
         </p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Left column: Account & Access */}
+        {/* Left column: RBAC Role selection */}
         <div className="lg:col-span-6 bg-white p-5 rounded-xl border border-gray-100 shadow-xs space-y-4">
           <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider border-b border-gray-50 pb-2 flex items-center gap-1.5">
             <Shield className="w-4 h-4 text-indigo-600" />
-            <span>Akun &amp; Hak Akses (RBAC)</span>
+            <span>Simulasi Hak Akses Pengguna (RBAC)</span>
           </h3>
 
           <div className="space-y-3">
             <p className="text-xs text-gray-500 leading-relaxed">
-              Hak akses sistem kini melekat pada akun login masing-masing staff dan dikelola via Supabase Auth.
-              Role tidak dapat diganti bebas dari halaman ini.
+              Pilih profil pengguna di bawah untuk melihat bagaimana simulasi keamanan membatasi hak akses operasional (hanya kasir vs tim klinis apoteker/admin):
             </p>
 
-            <div className="p-4 rounded-lg border border-emerald-200 bg-emerald-50/50 flex items-start gap-3">
-              <div className="p-2 rounded-lg bg-emerald-600 text-white">
-                <Shield className="w-4 h-4" />
-              </div>
-              <div className="text-xs">
-                <p className="font-bold text-gray-900">Role Aktif Anda</p>
-                <p className="text-gray-500 mt-0.5 uppercase font-mono text-[11px]">
-                  {currentRole}
-                </p>
-              </div>
-            </div>
-
             <div className="grid grid-cols-1 gap-2.5">
-              <div className="p-3.5 rounded-lg border border-gray-100 bg-gray-50/50 flex items-start gap-3">
-                <div className={`p-2 rounded-lg ${currentRole === 'superadmin' ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-500'}`}>
+              {/* ADMIN */}
+              <div
+                onClick={() => setRole('admin')}
+                className={`p-3.5 rounded-lg border-2 cursor-pointer transition-all flex items-start gap-3 ${currentRole === 'admin' ? 'border-indigo-600 bg-indigo-50/20' : 'border-gray-100 hover:border-gray-200'}`}
+              >
+                <div className={`p-2 rounded-lg ${currentRole === 'admin' ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-500'}`}>
                   <Shield className="w-4 h-4" />
                 </div>
                 <div className="text-xs">
-                  <p className="font-bold text-gray-900">Super Admin</p>
-                  <p className="text-gray-500 mt-0.5">Hak akses tertinggi: pembatalan transaksi, import batch &amp; hapus seluruh data obat.</p>
+                  <p className="font-bold text-gray-900">Administrator Utama (Superuser)</p>
+                  <p className="text-gray-500 mt-0.5">Akses penuh mencakup modifikasi data master, pembuatan PO obat, stock opname fisik, pelaporan jurnal keuangan, dan ekspor-impor database.</p>
                 </div>
               </div>
 
-              <div className="p-3.5 rounded-lg border border-gray-100 bg-gray-50/50 flex items-start gap-3">
+              {/* APOTEKER */}
+              <div
+                onClick={() => setRole('apoteker')}
+                className={`p-3.5 rounded-lg border-2 cursor-pointer transition-all flex items-start gap-3 ${currentRole === 'apoteker' ? 'border-indigo-600 bg-indigo-50/20' : 'border-gray-100 hover:border-gray-200'}`}
+              >
                 <div className={`p-2 rounded-lg ${currentRole === 'apoteker' ? 'bg-emerald-600 text-white' : 'bg-gray-100 text-gray-500'}`}>
                   <Users className="w-4 h-4" />
                 </div>
                 <div className="text-xs">
                   <p className="font-bold text-gray-900">Apoteker Penanggung Jawab</p>
-                  <p className="text-gray-500 mt-0.5">Akses medis: merancang PO, audit ED, stock opname fisik, dan meracik resep obat.</p>
+                  <p className="text-gray-500 mt-0.5">Akses medis penuh untuk merancang rencana pembelian (PO), mengaudit ED (kadaluwarsa), menginput stock opname fisik, dan meracik resep obat.</p>
                 </div>
               </div>
 
-              <div className="p-3.5 rounded-lg border border-gray-100 bg-gray-50/50 flex items-start gap-3">
+              {/* KASIR */}
+              <div
+                onClick={() => setRole('kasir')}
+                className={`p-3.5 rounded-lg border-2 cursor-pointer transition-all flex items-start gap-3 ${currentRole === 'kasir' ? 'border-indigo-600 bg-indigo-50/20' : 'border-gray-100 hover:border-gray-200'}`}
+              >
                 <div className={`p-2 rounded-lg ${currentRole === 'kasir' ? 'bg-amber-500 text-white' : 'bg-gray-100 text-gray-500'}`}>
                   <Shield className="w-4 h-4" />
                 </div>
                 <div className="text-xs">
                   <p className="font-bold text-gray-900">Kasir Toko (Front Desk)</p>
-                  <p className="text-gray-500 mt-0.5">Dibatasi pada layar POS kasir dan kartu stok obat. Kelola di menu Manajemen Pengguna.</p>
+                  <p className="text-gray-500 mt-0.5">Dibatasi hanya untuk mengakses layar penjualan POS kasir dan melihat kartu stok obat. Dilarang mengubah data master harga atau mengakses laporan laba rugi.</p>
                 </div>
               </div>
             </div>

@@ -46,6 +46,7 @@ import {
   stockCardService,
   stockOpnameService,
   cashJournalService,
+  sessionService,
 } from './services';
 
 interface PharmacyContextType {
@@ -329,18 +330,20 @@ export const PharmacyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const currentUserName = loggedInUser?.name || (currentRole === 'kasir' ? 'Kasir Utama' : 'Super Admin');
 
-  const isAuthed = !!loggedInUser;
-
-  // Load data from Supabase when user is authenticated
+  // Load data from Supabase on mount
   useEffect(() => {
-    if (!isAuthed) {
-      setLoading(false);
-      return;
-    }
-
     const loadData = async () => {
-      setLoading(true);
       try {
+        // Load session role from Supabase
+        try {
+          const session = await sessionService.getActiveSession();
+          if (session) {
+            setRoleState(session.role);
+          }
+        } catch (e) {
+          console.warn('Failed to load session from Supabase:', e);
+        }
+
         const results = await Promise.allSettled([
           medicineService.getAll(),
           supplierService.getAll(),
@@ -397,10 +400,11 @@ export const PharmacyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     };
 
     loadData();
-  }, [isAuthed]);
+  }, []);
 
   const setRole = (role: UserRole) => {
     setRoleState(role);
+    sessionService.updateSessionRole(role).catch(e => console.error('Failed to update session role:', e));
   };
 
   // MEDICINES CRUD

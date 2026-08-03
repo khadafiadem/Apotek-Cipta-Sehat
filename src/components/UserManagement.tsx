@@ -7,20 +7,25 @@ import {
   UserPlus,
   Shield,
   Mail,
+  Plus,
   Search,
   Trash2,
   Edit,
+  CheckCircle2,
+  Lock,
   Key,
   X,
-  UserCheck
+  UserCheck,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 
 export default function UserManagement() {
-  const { currentRole } = usePharmacy();
+  const { currentRole, setRole } = usePharmacy();
   const [users, setUsers] = useState<User[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('semua');
-  const [isLoading, setIsLoading] = useState(true);
+  const [visiblePasswords, setVisiblePasswords] = useState<{[key: string]: boolean}>({});
 
   // Form states for creating/editing user
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -32,24 +37,167 @@ export default function UserManagement() {
     password: ''
   });
 
-  const isAdmin = currentRole === 'superadmin' || currentRole === 'admin';
-
-  // Load staff from profiles
+  // Load users from Supabase
   useEffect(() => {
     const loadUsers = async () => {
-      setIsLoading(true);
       try {
         const stored = await userService.getAll();
-        setUsers(stored);
+        const defaults = getDefaultUsers();
+        if (stored.length > 0) {
+          const hasKhadafi = stored.some(u => u.email?.toLowerCase() === 'dafi@ciptasehat.com');
+          const hasManager = stored.some(u => u.email?.toLowerCase() === 'manager@ciptasehat.com');
+          const newOnes: User[] = [];
+          if (!hasKhadafi) {
+            const khadafi = defaults.find(u => u.email?.toLowerCase() === 'dafi@ciptasehat.com');
+            if (khadafi) newOnes.push(khadafi);
+          }
+          if (!hasManager) {
+            const manager = defaults.find(u => u.email?.toLowerCase() === 'manager@ciptasehat.com');
+            if (manager) newOnes.push(manager);
+          }
+          if (newOnes.length > 0) {
+            for (const u of newOnes) {
+              try { await userService.add(u.id, u); } catch {}
+            }
+            setUsers([...stored, ...newOnes]);
+            return;
+          }
+          setUsers(stored);
+        } else {
+          for (const u of defaults) {
+            try { await userService.add(u.id, u); } catch {}
+          }
+          setUsers(defaults);
+        }
       } catch (e) {
-        console.error('Failed to load staff:', e);
-        setUsers([]);
-      } finally {
-        setIsLoading(false);
+        setUsers(getDefaultUsers());
       }
     };
     loadUsers();
   }, []);
+
+  const getDefaultUsers = (): User[] => [
+    { id: 'USR-1', name: 'Ahmad Cipta', role: 'admin', email: 'ahmad@ciptasehat.com', password: 'test' },
+    { id: 'USR-2', name: 'Apt. Rahmawati', role: 'apoteker', email: 'rahma@ciptasehat.com', password: 'test' },
+    { id: 'USR-3', name: 'Siska Amelia', role: 'kasir', email: 'siska@ciptasehat.com', password: 'test' },
+    { id: 'USR-4', name: 'Mohammad Khadafi', role: 'superadmin', email: 'Dafi@ciptasehat.com', password: 'test' },
+    { id: 'USR-5', name: 'Manager Operasional', role: 'manager', email: 'manager@ciptasehat.com', password: 'test' }
+  ];
+
+  const saveUsers = (updatedUsers: User[]) => {
+    setUsers(updatedUsers);
+    userService.upsertMany(updatedUsers).catch(e => console.error('Failed to save users:', e));
+  };
+
+  // Switch role and notify
+  const handleSwitchSession = (role: UserRole) => {
+    setRole(role);
+  };
+
+  // Delete user
+  const handleDeleteUser = async (id: string) => {
+    const userToDelete = users.find(u => u.id === id);
+    if (userToDelete && userToDelete.role === currentRole) {
+      alert('Anda tidak dapat menghapus pengguna yang sedang aktif digunakan dalam sesi ini.');
+      return;
+    }
+    const confirmed = window.confirm(`Apakah Anda yakin ingin menghapus user ini?`);
+    if (confirmed) {
+      try {
+        await userService.delete(id);
+        setUsers(users.filter(u => u.id !== id));
+      } catch (err) {
+        console.error('Failed to delete user:', err);
+        alert('Gagal menghapus user dari server.');
+      }
+    }
+  };
+
+  // Open modal for Create
+  const handleOpenCreate = () => {
+    setEditingUser(null);
+    setFormData({
+      name: '',
+      email: '',
+      role: 'kasir',
+      password: ''
+    });
+    setIsModalOpen(true);
+  };
+
+  // Open modal for Edit
+  const handleOpenEdit = (user: User) => {
+    setEditingUser(user);
+    setFormData({
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      password: user.password || 'test'
+    });
+    setIsModalOpen(true);
+  };
+
+  // Handle form submission
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.name.trim() || !formData.email.trim() || !formData.password.trim()) {
+      alert('Mohon lengkapi semua field input.');
+      return;
+    }
+
+    if (editingUser) {
+      // Edit mode
+      try {
+        await userService.update(editingUser.id, { name: formData.name, email: formData.email, role: formData.role, password: formData.password });
+        const updated = users.map(u => {
+          if (u.id === editingUser.id) {
+            if (u.role === currentRole && u.role !== formData.role) {
+              setRole(formData.role);
+            }
+            return { ...u, name: formData.name, email: formData.email, role: formData.role, password: formData.password };
+          }
+          return u;
+        });
+        setUsers(updated);
+      } catch (err) {
+        console.error('Failed to update user:', err);
+        alert('Gagal menyimpan perubahan ke server. Pastikan tabel "users" sudah dibuat di Supabase.');
+        return;
+      }
+    } else {
+      // Create mode
+      const newId = `USR-${Math.floor(Math.random() * 9000) + 1000}`;
+      const newUser: User = {
+        id: newId,
+        name: formData.name,
+        email: formData.email,
+        role: formData.role,
+        password: formData.password
+      };
+      try {
+        await userService.add(newId, newUser);
+        setUsers([...users, newUser]);
+      } catch (err) {
+        console.error('Failed to create user:', err);
+        alert('Gagal menyimpan user baru ke server. Pastikan tabel "users" sudah dibuat di Supabase.');
+        return;
+      }
+    }
+
+    setIsModalOpen(false);
+  };
+
+  // Filtering users
+  const filteredUsers = users.filter(user => {
+    const matchesSearch =
+      user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      user.id.toLowerCase().includes(searchQuery.toLowerCase());
+
+    const matchesRole = roleFilter === 'semua' || user.role === roleFilter;
+
+    return matchesSearch && matchesRole;
+  });
 
   const getRoleBadgeStyle = (role: string) => {
     switch (role) {
@@ -85,117 +233,6 @@ export default function UserManagement() {
     }
   };
 
-  // Delete user
-  const handleDeleteUser = async (id: string) => {
-    const userToDelete = users.find(u => u.id === id);
-    if (userToDelete) {
-      const confirmed = window.confirm(`Apakah Anda yakin ingin menghapus akun ${userToDelete.name}?`);
-      if (confirmed) {
-        try {
-          await userService.delete(id);
-          setUsers(users.filter(u => u.id !== id));
-        } catch (err) {
-          console.error('Failed to delete user:', err);
-          alert('Gagal menghapus user. Pastikan Anda berhak dan akun bukan sedang dipakai.');
-        }
-      }
-    }
-  };
-
-  // Open modal for Create
-  const handleOpenCreate = () => {
-    setEditingUser(null);
-    setFormData({
-      name: '',
-      email: '',
-      role: 'kasir',
-      password: ''
-    });
-    setIsModalOpen(true);
-  };
-
-  // Open modal for Edit
-  const handleOpenEdit = (user: User) => {
-    setEditingUser(user);
-    setFormData({
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      password: ''
-    });
-    setIsModalOpen(true);
-  };
-
-  // Handle form submission
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!formData.name.trim() || !formData.email.trim()) {
-      alert('Mohon lengkapi nama dan email.');
-      return;
-    }
-
-    if (editingUser) {
-      // Edit mode
-      try {
-        await userService.update(editingUser.id, { name: formData.name, role: formData.role });
-        if (formData.password.trim()) {
-          await userService.resetPassword(editingUser.id, formData.password);
-        }
-        setUsers(users.map(u => u.id === editingUser.id
-          ? { ...u, name: formData.name, role: formData.role }
-          : u));
-      } catch (err) {
-        console.error('Failed to update user:', err);
-        alert(`Gagal menyimpan perubahan. ${(err as Error).message}`);
-        return;
-      }
-    } else {
-      // Create mode
-      if (!formData.password.trim()) {
-        alert('Password wajib diisi untuk akun baru.');
-        return;
-      }
-      try {
-        await userService.create({
-          name: formData.name,
-          email: formData.email,
-          password: formData.password,
-          role: formData.role,
-        });
-        setUsers(await userService.getAll());
-      } catch (err) {
-        console.error('Failed to create user:', err);
-        alert(`Gagal membuat user. ${(err as Error).message}`);
-        return;
-      }
-    }
-
-    setIsModalOpen(false);
-  };
-
-  // Filtering users
-  const filteredUsers = users.filter(user => {
-    const matchesSearch =
-      user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchQuery.toLowerCase());
-
-    const matchesRole = roleFilter === 'semua' || user.role === roleFilter;
-
-    return matchesSearch && matchesRole;
-  });
-
-  const shortId = (id: string) => (id.length > 8 ? `${id.slice(0, 8)}…` : id);
-
-  if (!isAdmin) {
-    return (
-      <div className="bg-white p-10 rounded-3xl border border-slate-100 shadow-xs text-center space-y-3">
-        <Shield className="w-10 h-10 text-rose-400 mx-auto" />
-        <h2 className="font-extrabold text-slate-900">Akses Ditolak</h2>
-        <p className="text-xs text-slate-500">Hanya Admin atau Super Admin yang dapat mengelola pengguna.</p>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6" id="user-management-module">
       {/* HEADER */}
@@ -206,7 +243,7 @@ export default function UserManagement() {
             Manajemen Pengguna (RBAC)
           </h2>
           <p className="text-xs text-slate-500 mt-1">
-            Kelola akun staff dan hak akses. Role melekat pada akun login dan tidak dapat diganti bebas.
+            Konfigurasi pengguna sistem, kelola hak akses berbasis peran (Role-Based Access Control), dan simulasi pertukaran pengguna.
           </p>
         </div>
         <div className="flex font-mono text-[11px] bg-slate-100 p-1.5 rounded-xl border border-slate-200/40 text-slate-500 gap-3 self-start md:self-auto">
@@ -214,17 +251,18 @@ export default function UserManagement() {
         </div>
       </div>
 
-      {/* ROLE REFERENCE */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+      {/* ACTIVE ROLE EXPLANATION / BANNER */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {['superadmin', 'admin', 'apoteker', 'kasir', 'manager'].map((role) => {
           const isActive = currentRole === role;
           return (
             <div
               key={role}
-              className={`p-5 rounded-2xl border transition-all relative flex flex-col justify-between ${
+              onClick={() => handleSwitchSession(role as UserRole)}
+              className={`p-5 rounded-2xl border transition-all cursor-pointer relative flex flex-col justify-between ${
                 isActive
                   ? role === 'superadmin' ? 'bg-purple-600 text-white border-purple-700 shadow-md shadow-purple-500/10' : 'bg-emerald-500 text-white border-emerald-600 shadow-md shadow-emerald-500/10'
-                  : 'bg-white text-slate-800 border-slate-100 shadow-2xs'
+                  : 'bg-white text-slate-800 border-slate-100 hover:border-slate-200 shadow-2xs'
               }`}
             >
               <div>
@@ -243,6 +281,12 @@ export default function UserManagement() {
                   {getRoleDescription(role)}
                 </p>
               </div>
+              <div className="mt-4 pt-3 border-t border-dashed border-current/25 flex items-center justify-between">
+                <span className="text-[10px] font-bold">
+                  {isActive ? '✓ Sesi Aktif Terpilih' : 'Klik untuk Beralih Peran'}
+                </span>
+                <Shield className="w-3.5 h-3.5 opacity-60" />
+              </div>
             </div>
           );
         })}
@@ -255,7 +299,7 @@ export default function UserManagement() {
           <div className="relative">
             <input
               type="text"
-              placeholder="Cari user (nama, email)..."
+              placeholder="Cari user (ID, nama, email)..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 pl-9 pr-4 text-xs font-semibold focus:outline-hidden focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-500 shadow-2xs"
@@ -305,64 +349,100 @@ export default function UserManagement() {
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="border-b border-slate-100 text-[10px] font-bold text-slate-400 uppercase bg-slate-50/40">
-                <th className="py-3 px-6">ID Akun</th>
+                <th className="py-3 px-6">ID User</th>
                 <th className="py-3 px-6">Nama Pengguna</th>
                 <th className="py-3 px-6">Email Address</th>
+                <th className="py-3 px-6">Kata Sandi</th>
                 <th className="py-3 px-6">Peran Akses</th>
+                <th className="py-3 px-6">Sesi Saat Ini</th>
                 <th className="py-3 px-6 text-center">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-xs">
-              {isLoading ? (
+              {filteredUsers.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="py-10 text-center text-slate-400 font-medium">
-                    Memuat data staff...
-                  </td>
-                </tr>
-              ) : filteredUsers.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="py-10 text-center text-slate-400 font-medium">
+                  <td colSpan={7} className="py-10 text-center text-slate-400 font-medium">
                     Tidak ada staff/user yang ditemukan.
                   </td>
                 </tr>
               ) : (
-                filteredUsers.map((user) => (
-                  <tr key={user.id} className="hover:bg-slate-50/50 transition-colors">
-                    <td className="py-4 px-6 font-mono font-bold text-slate-500" title={user.id}>{shortId(user.id)}</td>
-                    <td className="py-4 px-6">
-                      <div className="font-bold text-slate-900">{user.name}</div>
-                    </td>
-                    <td className="py-4 px-6 font-mono text-slate-500">
-                      <div className="flex items-center gap-1.5">
-                        <Mail className="w-3.5 h-3.5 text-slate-400" />
-                        <span>{user.email}</span>
-                      </div>
-                    </td>
-                    <td className="py-4 px-6">
-                      <span className={`inline-block text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md border ${getRoleBadgeStyle(user.role)}`}>
-                        {user.role}
-                      </span>
-                    </td>
-                    <td className="py-4 px-6 text-center">
-                      <div className="flex justify-center items-center gap-2">
-                        <button
-                          onClick={() => handleOpenEdit(user)}
-                          className="bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-800 p-1.5 rounded-lg transition-colors"
-                          title="Edit"
-                        >
-                          <Edit className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteUser(user.id)}
-                          className="bg-rose-50 hover:bg-rose-100 text-rose-600 hover:text-rose-800 p-1.5 rounded-lg transition-colors"
-                          title="Hapus"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
+                filteredUsers.map((user) => {
+                  const isActiveUser = currentRole === user.role;
+                  return (
+                    <tr key={user.id} className="hover:bg-slate-50/50 transition-colors">
+                      <td className="py-4 px-6 font-mono font-bold text-slate-500">{user.id}</td>
+                      <td className="py-4 px-6">
+                        <div className="font-bold text-slate-900">{user.name}</div>
+                      </td>
+                      <td className="py-4 px-6 font-mono text-slate-500">
+                        <div className="flex items-center gap-1.5">
+                          <Mail className="w-3.5 h-3.5 text-slate-400" />
+                          <span>{user.email}</span>
+                        </div>
+                      </td>
+                      <td className="py-4 px-6 font-mono text-slate-500">
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setVisiblePasswords(prev => ({
+                                ...prev,
+                                [user.id]: !prev[user.id]
+                              }));
+                            }}
+                            className="text-slate-400 hover:text-emerald-500 transition-colors focus:outline-none"
+                            title={visiblePasswords[user.id] ? 'Sembunyikan Kata Sandi' : 'Tampilkan Kata Sandi'}
+                          >
+                            {visiblePasswords[user.id] ? (
+                              <EyeOff className="w-3.5 h-3.5" />
+                            ) : (
+                              <Eye className="w-3.5 h-3.5" />
+                            )}
+                          </button>
+                          <span className="font-semibold">{visiblePasswords[user.id] ? (user.password || 'test') : '••••••••'}</span>
+                        </div>
+                      </td>
+                      <td className="py-4 px-6">
+                        <span className={`inline-block text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md border ${getRoleBadgeStyle(user.role)}`}>
+                          {user.role}
+                        </span>
+                      </td>
+                      <td className="py-4 px-6">
+                        {isActiveUser ? (
+                          <span className="inline-flex items-center gap-1 text-emerald-600 font-extrabold text-[10px] bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">
+                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-ping" />
+                            Sesi Aktif
+                          </span>
+                        ) : (
+                          <button
+                            onClick={() => handleSwitchSession(user.role)}
+                            className="text-slate-400 hover:text-emerald-600 text-[10px] font-bold hover:underline"
+                          >
+                            Beralih ke Sesi Ini
+                          </button>
+                        )}
+                      </td>
+                      <td className="py-4 px-6 text-center">
+                        <div className="flex justify-center items-center gap-2">
+                          <button
+                            onClick={() => handleOpenEdit(user)}
+                            className="bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-800 p-1.5 rounded-lg transition-colors"
+                            title="Edit"
+                          >
+                            <Edit className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteUser(user.id)}
+                            className="bg-rose-50 hover:bg-rose-100 text-rose-600 hover:text-rose-800 p-1.5 rounded-lg transition-colors"
+                            title="Hapus"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
@@ -406,33 +486,24 @@ export default function UserManagement() {
                 <input
                   type="email"
                   required
-                  disabled={!!editingUser}
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   placeholder="Contoh: siska@ciptasehat.com"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-xs font-semibold focus:outline-hidden focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-500 shadow-3xs disabled:opacity-60 disabled:cursor-not-allowed"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-xs font-semibold focus:outline-hidden focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-500 shadow-3xs"
                 />
-                {editingUser && (
-                  <p className="text-[9px] text-slate-400">Email tidak dapat diubah.</p>
-                )}
               </div>
 
               {/* Kata Sandi */}
               <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-400 uppercase">
-                  {editingUser ? 'Reset Kata Sandi (opsional)' : 'Kata Sandi (Password)'}
-                </label>
+                <label className="text-[10px] font-bold text-slate-400 uppercase">Kata Sandi (Password)</label>
                 <input
                   type="text"
-                  required={!editingUser}
+                  required
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  placeholder={editingUser ? 'Kosongkan jika tidak diganti' : 'Minimal 6 karakter'}
+                  placeholder="Masukkan kata sandi baru"
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-xs font-semibold focus:outline-hidden focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-500 shadow-3xs"
                 />
-                <p className="text-[9px] text-slate-400 flex items-center gap-1">
-                  <Key className="w-3 h-3" /> Password disimpan ter-hash di Supabase Auth.
-                </p>
               </div>
 
               {/* Role */}

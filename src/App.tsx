@@ -17,8 +17,7 @@ import PembatalanTransaksi from './components/PembatalanTransaksi';
 import UserManagement from './components/UserManagement';
 import Login from './components/Login';
 import { User } from './types';
-import { sessionService } from './services';
-import { supabase } from './lib/supabase';
+import { sessionService, userService } from './services';
 
 import {
   LayoutDashboard,
@@ -78,31 +77,51 @@ function MainAppShell() {
   const [loggedInUser, setLoggedInUser] = useState<User | null>(null);
   const [sessionLoaded, setSessionLoaded] = useState(false);
 
-  // Load Supabase Auth session on mount & subscribe to changes
+  // Load session from Supabase on mount
   useEffect(() => {
-    let active = true;
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!active) return;
-      if (session?.user) {
-        const meta = session.user.user_metadata || {};
-        setLoggedInUser({
-          id: session.user.id,
-          name: (meta.name as string) || session.user.email || 'User',
-          email: session.user.email || '',
-          role: (meta.role as User['role']) || 'kasir',
-        });
-      } else {
-        setLoggedInUser(null);
-      }
-      setSessionLoaded(true);
-    });
-
-    return () => {
-      active = false;
-      subscription.unsubscribe();
-    };
+    sessionService.getActiveSession()
+      .then(session => {
+        if (session) {
+          setLoggedInUser(session.user);
+        }
+      })
+      .catch(e => console.warn('Failed to load session:', e))
+      .finally(() => setSessionLoaded(true));
   }, []);
+
+  const [allUsers, setAllUsers] = useState<User[]>([]);
+
+  // Track staff lists from Supabase
+  useEffect(() => {
+    if (!sessionLoaded) return;
+
+    const loadUsers = async () => {
+      try {
+        const users = await userService.getAll();
+        if (users.length > 0) {
+          const hasManager = users.some(u => u.email?.toLowerCase() === 'manager@ciptasehat.com');
+          if (!hasManager) {
+            const manager = { id: 'USR-5', name: 'Manager Operasional', role: 'manager' as const, email: 'manager@ciptasehat.com', password: 'test' };
+            try { await userService.add(manager.id, manager); } catch {}
+            setAllUsers([...users, manager]);
+          } else {
+            setAllUsers(users);
+          }
+        } else {
+          const defaults = getDefaultUsers();
+          for (const u of defaults) {
+            try { await userService.add(u.id, u); } catch {}
+          }
+          setAllUsers(defaults);
+        }
+      } catch (e) {
+        console.warn('Failed to load users from Supabase:', e);
+        setAllUsers(getDefaultUsers());
+      }
+    };
+
+    loadUsers();
+  }, [sessionLoaded, loggedInUser, activeTab]);
 
   // Sync context role and user with active logged-in user
   useEffect(() => {
@@ -112,19 +131,34 @@ function MainAppShell() {
     }
   }, [loggedInUser, currentRole, setRole, setContextUser]);
 
+  const getDefaultUsers = (): User[] => [
+    { id: 'USR-1', name: 'Ahmad Cipta', role: 'admin' as const, email: 'ahmad@ciptasehat.com', password: 'test' },
+    { id: 'USR-2', name: 'Apt. Rahmawati', role: 'apoteker' as const, email: 'rahma@ciptasehat.com', password: 'test' },
+    { id: 'USR-3', name: 'Siska Amelia', role: 'kasir' as const, email: 'siska@ciptasehat.com', password: 'test' },
+    { id: 'USR-4', name: 'Mohammad Khadafi', role: 'superadmin' as const, email: 'Dafi@ciptasehat.com', password: 'test' },
+    { id: 'USR-5', name: 'Manager Operasional', role: 'manager' as const, email: 'manager@ciptasehat.com', password: 'test' }
+  ];
+
+  const handleLoginSuccess = (user: User) => {
+    setLoggedInUser(user);
+    sessionService.createSession(user, user.role).catch(e => console.error('Failed to save session:', e));
+    setRole(user.role);
+  };
+
   const handleLogout = () => {
     setShowLogoutConfirm(true);
   };
 
   const confirmLogout = () => {
     setLoggedInUser(null);
-    sessionService.clearSession().catch(e => console.error('Failed to sign out:', e));
+    sessionService.clearSession().catch(e => console.error('Failed to clear session:', e));
     setShowLogoutConfirm(false);
   };
 
   const getActiveUserName = () => {
-    return loggedInUser?.name ||
-      (currentRole === 'superadmin' ? 'Super Admin' : currentRole === 'admin' ? 'Administrator' : currentRole === 'manager' ? 'Manager' : currentRole === 'kasir' ? 'Kasir' : 'User');
+    if (loggedInUser?.name) return loggedInUser.name;
+    const user = allUsers.find(u => u.role === currentRole);
+    return user ? user.name : (currentRole === 'superadmin' ? 'Super Admin' : currentRole === 'admin' ? 'Administrator' : currentRole === 'manager' ? 'Manager' : currentRole);
   };
 
   // States for cross-module prepopulate suggestions
@@ -153,11 +187,9 @@ function MainAppShell() {
     { id: 'inventory', label: 'Stok & Opname', icon: Package, badge: lowStockCount > 0 ? `${lowStockCount}!` : undefined, badgeColor: 'bg-rose-500' },
     { id: 'reports', label: 'Keuangan & Jurnal', icon: PieChart },
     { id: 'laporan', label: 'Menu Laporan', icon: ClipboardList },
-    ...(currentRole === 'superadmin' || currentRole === 'admin' ? [
-      { id: 'pembatalan', label: 'Pembatalan Transaksi', icon: ShieldAlert, badge: 'SuperAdmin', badgeColor: 'bg-purple-600' },
-      { id: 'user', label: 'User', icon: Users },
-      { id: 'settings', label: 'Pengaturan & Backup', icon: Settings }
-    ] : []),
+    ...(currentRole === 'superadmin' || currentRole === 'admin' ? [{ id: 'pembatalan', label: 'Pembatalan Transaksi', icon: ShieldAlert, badge: 'SuperAdmin', badgeColor: 'bg-purple-600' }] : []),
+    { id: 'user', label: 'User', icon: Users },
+    { id: 'settings', label: 'Pengaturan & Backup', icon: Settings }
   ];
 
   const renderActiveComponent = () => {
@@ -228,7 +260,7 @@ function MainAppShell() {
   }
 
   if (!loggedInUser) {
-    return <Login />;
+    return <Login onLoginSuccess={handleLoginSuccess} />;
   }
 
   return (

@@ -226,12 +226,8 @@ CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 CREATE INDEX IF NOT EXISTS idx_user_sessions_user_id ON user_sessions(user_id);
 
 -- ============================================================
--- ROW LEVEL SECURITY (RLS)
--- PERHATIAN: Policy "Allow all for development" di bawah HANYA
--- untuk tahap development. Untuk produksi, policy ini SUDAH
--- diganti oleh migrasi: supabase/migrations/20260803_auth_rbac.sql
--- (RLS authenticated-only + Supabase Auth + tabel profiles).
--- Jalankan migrasi tersebut di Supabase SQL Editor.
+-- ROW LEVEL SECURITY (RLS) - Disable untuk development
+-- Untuk production, enable RLS dan buat policies
 -- ============================================================
 ALTER TABLE medicines ENABLE ROW LEVEL SECURITY;
 ALTER TABLE suppliers ENABLE ROW LEVEL SECURITY;
