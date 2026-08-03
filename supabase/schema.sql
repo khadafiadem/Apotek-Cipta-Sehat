@@ -268,3 +268,13 @@ CREATE POLICY "Allow all for development" ON stock_opnames FOR ALL USING (true) 
 CREATE POLICY "Allow all for development" ON cash_journal FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow all for development" ON users FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow all for development" ON user_sessions FOR ALL USING (true) WITH CHECK (true);
+
+-- ============================================================
+-- MIGRASI PERBAIKAN (aman dijalankan berulang kali)
+-- Menambahkan kolom yang hilang pada database lama agar semua
+-- penyimpanan data berjalan normal. Jika kolom sudah ada,
+-- perintah berikut akan diabaikan.
+-- ============================================================
+ALTER TABLE stock_cards ADD COLUMN IF NOT EXISTS oleh TEXT DEFAULT '';
+ALTER TABLE purchase_orders ADD COLUMN IF NOT EXISTS approved_by TEXT DEFAULT '';
+ALTER TABLE purchase_orders ADD COLUMN IF NOT EXISTS alasan_reject TEXT DEFAULT '';

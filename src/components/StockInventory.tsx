@@ -370,7 +370,9 @@ export default function StockInventory() {
             </div>
           ) : (
             <div className="space-y-4 max-h-[500px] overflow-y-auto pr-1">
-              {stockOpnames.map(op => (
+              {[...stockOpnames]
+                .sort((a, b) => new Date(b.tanggal).getTime() - new Date(a.tanggal).getTime())
+                .map(op => (
                 <div key={op.id} className="p-4 bg-gray-50/50 rounded-xl border border-gray-100 space-y-3 text-xs">
                   <div className="flex items-center justify-between border-b border-gray-100 pb-2">
                     <div>

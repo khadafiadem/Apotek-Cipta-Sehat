@@ -1,0 +1,3 @@
+ALTER TABLE stock_cards ADD COLUMN IF NOT EXISTS oleh TEXT DEFAULT '';
+ALTER TABLE purchase_orders ADD COLUMN IF NOT EXISTS approved_by TEXT DEFAULT '';
+ALTER TABLE purchase_orders ADD COLUMN IF NOT EXISTS alasan_reject TEXT DEFAULT '';

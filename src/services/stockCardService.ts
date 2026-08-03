@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase';
 import { StockCard } from '../types';
+import { fetchAllRows } from './paginate';
 
 const TABLE = 'stock_cards';
 
@@ -37,9 +38,7 @@ function toStockCard(row: Record<string, unknown>): StockCard {
 
 export const stockCardService = {
   async getAll(): Promise<StockCard[]> {
-    const { data, error } = await supabase.from(TABLE).select('*');
-    if (error) throw error;
-    return (data || []).map(toStockCard);
+    return fetchAllRows<StockCard>(TABLE, toStockCard);
   },
 
   async add(sc: StockCard): Promise<void> {

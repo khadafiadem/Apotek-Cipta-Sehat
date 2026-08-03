@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase';
 import { CashJournal } from '../types';
+import { fetchAllRows } from './paginate';
 
 const TABLE = 'cash_journal';
 
@@ -27,9 +28,7 @@ function toJournal(row: Record<string, unknown>): CashJournal {
 
 export const cashJournalService = {
   async getAll(): Promise<CashJournal[]> {
-    const { data, error } = await supabase.from(TABLE).select('*');
-    if (error) throw error;
-    return (data || []).map(toJournal);
+    return fetchAllRows<CashJournal>(TABLE, toJournal);
   },
 
   async add(cj: CashJournal): Promise<void> {

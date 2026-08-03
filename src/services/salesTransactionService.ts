@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase';
 import { SalesTransaction } from '../types';
+import { fetchAllRows } from './paginate';
 
 const TABLE = 'sales_transactions';
 
@@ -49,9 +50,7 @@ function toSales(row: Record<string, unknown>): SalesTransaction {
 
 export const salesTransactionService = {
   async getAll(): Promise<SalesTransaction[]> {
-    const { data, error } = await supabase.from(TABLE).select('*');
-    if (error) throw error;
-    return (data || []).map(toSales);
+    return fetchAllRows<SalesTransaction>(TABLE, toSales);
   },
 
   async add(tx: SalesTransaction): Promise<void> {
