@@ -1,66 +1,62 @@
 import { supabase } from '../lib/supabase';
-import { User } from '../types';
-
-const TABLE = 'users';
-
-function toRow(u: Omit<User, 'id'>) {
-  return {
-    name: u.name,
-    email: u.email,
-    role: u.role,
-    password: u.password || '',
-  };
-}
+import { User, UserRole } from '../types';
 
 function toUser(row: Record<string, unknown>): User {
   return {
     id: row.id as string,
     name: row.name as string,
     email: row.email as string,
-    role: row.role as User['role'],
-    password: row.password as string,
+    role: row.role as UserRole,
   };
+}
+
+export interface CreateStaffInput {
+  name: string;
+  email: string;
+  password: string;
+  role: UserRole;
 }
 
 export const userService = {
   async getAll(): Promise<User[]> {
-    const { data, error } = await supabase.from(TABLE).select('*');
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id, name, email, role')
+      .eq('active', true)
+      .order('created_at');
     if (error) throw error;
     return (data || []).map(toUser);
   },
 
-  async add(id: string, user: Omit<User, 'id'>): Promise<User> {
-    const { data, error } = await supabase
-      .from(TABLE)
-      .insert({ id, ...toRow(user) })
-      .select()
-      .single();
+  async create(input: CreateStaffInput): Promise<void> {
+    const { error } = await supabase.rpc('create_staff', {
+      p_name: input.name,
+      p_email: input.email,
+      p_password: input.password,
+      p_role: input.role,
+    });
     if (error) throw error;
-    return toUser(data);
   },
 
   async update(id: string, fields: Partial<User>): Promise<void> {
-    const row: Record<string, unknown> = {};
-    if (fields.name !== undefined) row.name = fields.name;
-    if (fields.email !== undefined) row.email = fields.email;
-    if (fields.role !== undefined) row.role = fields.role;
-    if (fields.password !== undefined) row.password = fields.password;
+    const { error } = await supabase.rpc('update_staff', {
+      p_id: id,
+      p_name: fields.name,
+      p_role: fields.role,
+    });
+    if (error) throw error;
+  },
 
-    const { error } = await supabase.from(TABLE).update(row).eq('id', id);
+  async resetPassword(id: string, password: string): Promise<void> {
+    const { error } = await supabase.rpc('reset_staff_password', {
+      p_id: id,
+      p_password: password,
+    });
     if (error) throw error;
   },
 
   async delete(id: string): Promise<void> {
-    const { error } = await supabase.from(TABLE).delete().eq('id', id);
-    if (error) throw error;
-  },
-
-  async upsertMany(users: (User & { id: string })[]): Promise<void> {
-    const rows = users.map(u => ({
-      id: u.id,
-      ...toRow(u),
-    }));
-    const { error } = await supabase.from(TABLE).upsert(rows, { onConflict: 'id' });
+    const { error } = await supabase.rpc('delete_staff', { p_id: id });
     if (error) throw error;
   },
 };
