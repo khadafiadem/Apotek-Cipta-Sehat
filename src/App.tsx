@@ -74,20 +74,9 @@ function MainAppShell() {
   };
 
   // States for logged in user session
+  // Sesi TIDAK dipulihkan otomatis: setiap buka halaman/link harus login dulu
   const [loggedInUser, setLoggedInUser] = useState<User | null>(null);
-  const [sessionLoaded, setSessionLoaded] = useState(false);
-
-  // Load session from Supabase on mount
-  useEffect(() => {
-    sessionService.getActiveSession()
-      .then(session => {
-        if (session) {
-          setLoggedInUser(session.user);
-        }
-      })
-      .catch(e => console.warn('Failed to load session:', e))
-      .finally(() => setSessionLoaded(true));
-  }, []);
+  const [sessionLoaded, setSessionLoaded] = useState(true);
 
   const [allUsers, setAllUsers] = useState<User[]>([]);
 
