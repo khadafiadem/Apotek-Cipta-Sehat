@@ -598,7 +598,7 @@ export default function PurchaseModule({ poItemsPrepopulate, clearPOItemsPrepopu
               {[
                 { key: 'semua', label: 'Semua' },
                 { key: 'draft', label: 'Draft' },
-                { key: 'dipesan', label: 'Dipesan' },
+                { key: 'dipesan', label: 'Barang dipesan' },
                 { key: 'diterima', label: 'Barang diterima' }
               ].map(opt => (
                 <label
@@ -638,7 +638,7 @@ export default function PurchaseModule({ poItemsPrepopulate, clearPOItemsPrepopu
                     batal: 'bg-gray-100 text-gray-500 border-gray-200'
                   };
                   const statusLabels: Record<string, string> = {
-                    draft: 'Draft', dipesan: 'Dipesan', diterima: 'Barang diterima', batal: 'Batal'
+                    draft: 'Draft', dipesan: 'Barang dipesan', diterima: 'Barang diterima', batal: 'Batal'
                   };
 
                   return (
@@ -748,7 +748,7 @@ export default function PurchaseModule({ poItemsPrepopulate, clearPOItemsPrepopu
                 <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs flex items-center gap-2.5">
                   <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
                   <div>
-                    <p className="font-bold text-amber-900">Belum ada PO berstatus "Dipesan".</p>
+                    <p className="font-bold text-amber-900">Belum ada PO berstatus "Barang dipesan".</p>
                     <p className="text-[11px] text-amber-800">
                       Buat & kirim PO terlebih dahulu di tab <strong>Buat PO Baru</strong> sebelum menerima barang.
                     </p>
