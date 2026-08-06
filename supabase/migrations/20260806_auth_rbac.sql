@@ -382,7 +382,7 @@ BEGIN
     RAISE EXCEPTION 'Tidak dapat menghapus akun sendiri.';
   END IF;
 
-  DELETE FROM public.profiles WHERE id = p_id; -- cascade ke auth.users
+  DELETE FROM auth.users WHERE id = p_id; -- cascade ke profiles & identities
 END;
 $$;
 
