@@ -152,7 +152,7 @@ export default function UserManagement() {
     } else {
       // Create mode
       if (!formData.password.trim()) {
-        alert('Password wajib diisi untuk akun baru (minimal 6 karakter).');
+        alert('Password wajib diisi untuk akun baru (minimal 8 karakter).');
         return;
       }
       try {
@@ -440,7 +440,7 @@ export default function UserManagement() {
                   required={!editingUser}
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  placeholder={editingUser ? 'Kosongkan jika tidak diganti' : 'Minimal 6 karakter'}
+                  placeholder={editingUser ? 'Kosongkan jika tidak diganti' : 'Minimal 8 karakter'}
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-xs font-semibold focus:outline-hidden focus:ring-2 focus:ring-emerald-500/10 focus:border-emerald-500 shadow-3xs"
                 />
                 <p className="text-[9px] text-slate-400 flex items-center gap-1">

@@ -268,8 +268,8 @@ BEGIN
   IF p_role NOT IN ('superadmin','admin','apoteker','kasir','manager') THEN
     RAISE EXCEPTION 'Role tidak valid.';
   END IF;
-  IF char_length(coalesce(p_password, '')) < 6 THEN
-    RAISE EXCEPTION 'Password minimal 6 karakter.';
+  IF char_length(coalesce(p_password, '')) < 8 THEN
+    RAISE EXCEPTION 'Password minimal 8 karakter.';
   END IF;
   IF EXISTS (SELECT 1 FROM auth.users WHERE lower(email) = v_email) THEN
     RAISE EXCEPTION 'Email sudah terdaftar.';
@@ -354,8 +354,8 @@ BEGIN
   IF NOT public.is_admin() THEN
     RAISE EXCEPTION 'Akses ditolak: hanya Admin yang dapat mereset password.';
   END IF;
-  IF char_length(coalesce(p_password, '')) < 6 THEN
-    RAISE EXCEPTION 'Password minimal 6 karakter.';
+  IF char_length(coalesce(p_password, '')) < 8 THEN
+    RAISE EXCEPTION 'Password minimal 8 karakter.';
   END IF;
 
   UPDATE auth.users
