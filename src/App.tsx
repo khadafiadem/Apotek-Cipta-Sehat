@@ -17,7 +17,7 @@ import PembatalanTransaksi from './components/PembatalanTransaksi';
 import UserManagement from './components/UserManagement';
 import Login from './components/Login';
 import { User } from './types';
-import { sessionService, userService } from './services';
+import { sessionService } from './services';
 
 import {
   LayoutDashboard,
@@ -78,40 +78,6 @@ function MainAppShell() {
   const [loggedInUser, setLoggedInUser] = useState<User | null>(null);
   const [sessionLoaded, setSessionLoaded] = useState(true);
 
-  const [allUsers, setAllUsers] = useState<User[]>([]);
-
-  // Track staff lists from Supabase
-  useEffect(() => {
-    if (!sessionLoaded) return;
-
-    const loadUsers = async () => {
-      try {
-        const users = await userService.getAll();
-        if (users.length > 0) {
-          const hasManager = users.some(u => u.email?.toLowerCase() === 'manager@ciptasehat.com');
-          if (!hasManager) {
-            const manager = { id: 'USR-5', name: 'Manager Operasional', role: 'manager' as const, email: 'manager@ciptasehat.com', password: 'test' };
-            try { await userService.add(manager.id, manager); } catch {}
-            setAllUsers([...users, manager]);
-          } else {
-            setAllUsers(users);
-          }
-        } else {
-          const defaults = getDefaultUsers();
-          for (const u of defaults) {
-            try { await userService.add(u.id, u); } catch {}
-          }
-          setAllUsers(defaults);
-        }
-      } catch (e) {
-        console.warn('Failed to load users from Supabase:', e);
-        setAllUsers(getDefaultUsers());
-      }
-    };
-
-    loadUsers();
-  }, [sessionLoaded, loggedInUser, activeTab]);
-
   // Sync context role and user with active logged-in user
   useEffect(() => {
     setContextUser(loggedInUser);
@@ -120,17 +86,8 @@ function MainAppShell() {
     }
   }, [loggedInUser, currentRole, setRole, setContextUser]);
 
-  const getDefaultUsers = (): User[] => [
-    { id: 'USR-1', name: 'Ahmad Cipta', role: 'admin' as const, email: 'ahmad@ciptasehat.com', password: 'test' },
-    { id: 'USR-2', name: 'Apt. Rahmawati', role: 'apoteker' as const, email: 'rahma@ciptasehat.com', password: 'test' },
-    { id: 'USR-3', name: 'Siska Amelia', role: 'kasir' as const, email: 'siska@ciptasehat.com', password: 'test' },
-    { id: 'USR-4', name: 'Mohammad Khadafi', role: 'superadmin' as const, email: 'Dafi@ciptasehat.com', password: 'test' },
-    { id: 'USR-5', name: 'Manager Operasional', role: 'manager' as const, email: 'manager@ciptasehat.com', password: 'test' }
-  ];
-
   const handleLoginSuccess = (user: User) => {
     setLoggedInUser(user);
-    sessionService.createSession(user, user.role).catch(e => console.error('Failed to save session:', e));
     setRole(user.role);
   };
 
@@ -140,14 +97,13 @@ function MainAppShell() {
 
   const confirmLogout = () => {
     setLoggedInUser(null);
-    sessionService.clearSession().catch(e => console.error('Failed to clear session:', e));
+    sessionService.clearSession().catch(e => console.error('Failed to sign out:', e));
     setShowLogoutConfirm(false);
   };
 
   const getActiveUserName = () => {
     if (loggedInUser?.name) return loggedInUser.name;
-    const user = allUsers.find(u => u.role === currentRole);
-    return user ? user.name : (currentRole === 'superadmin' ? 'Super Admin' : currentRole === 'admin' ? 'Administrator' : currentRole === 'manager' ? 'Manager' : currentRole);
+    return (currentRole === 'superadmin' ? 'Super Admin' : currentRole === 'admin' ? 'Administrator' : currentRole === 'manager' ? 'Manager' : currentRole === 'kasir' ? 'Kasir' : currentRole);
   };
 
   // States for cross-module prepopulate suggestions

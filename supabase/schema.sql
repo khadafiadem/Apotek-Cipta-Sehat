@@ -189,24 +189,14 @@ CREATE TABLE IF NOT EXISTS cash_journal (
   keterangan TEXT DEFAULT ''
 );
 
--- 17. TABEL USERS (PENGGUNA)
-CREATE TABLE IF NOT EXISTS users (
-  id TEXT PRIMARY KEY,
-  name TEXT NOT NULL,
-  email TEXT UNIQUE NOT NULL,
-  role TEXT NOT NULL CHECK (role IN ('admin', 'apoteker', 'kasir', 'manager')),
-  password TEXT DEFAULT ''
-);
-
--- 18. TABEL USER SESSIONS (SESI AKTIF)
-CREATE TABLE IF NOT EXISTS user_sessions (
-  id TEXT PRIMARY KEY,
-  user_id TEXT NOT NULL,
-  user_name TEXT NOT NULL,
-  user_email TEXT NOT NULL,
-  user_role TEXT NOT NULL,
-  role TEXT NOT NULL,
-  created_at TEXT DEFAULT now()::text
+-- 17. TABEL PROFILES (PENGGUNA, terhubung ke Supabase Auth)
+CREATE TABLE IF NOT EXISTS profiles (
+  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  name TEXT NOT NULL DEFAULT '',
+  email TEXT NOT NULL DEFAULT '',
+  role TEXT NOT NULL DEFAULT 'kasir' CHECK (role IN ('superadmin', 'admin', 'apoteker', 'kasir', 'manager')),
+  active BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 -- ============================================================
@@ -222,12 +212,15 @@ CREATE INDEX IF NOT EXISTS idx_supplier_debts_supplier ON supplier_debts(supplie
 CREATE INDEX IF NOT EXISTS idx_customer_credits_customer ON customer_credits(customer_id);
 CREATE INDEX IF NOT EXISTS idx_medicines_kategori ON medicines(kategori);
 CREATE INDEX IF NOT EXISTS idx_purchase_orders_supplier ON purchase_orders(supplier_id);
-CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
-CREATE INDEX IF NOT EXISTS idx_user_sessions_user_id ON user_sessions(user_id);
+CREATE INDEX IF NOT EXISTS idx_profiles_email ON profiles(email);
 
 -- ============================================================
--- ROW LEVEL SECURITY (RLS) - Disable untuk development
--- Untuk production, enable RLS dan buat policies
+-- ROW LEVEL SECURITY (RLS) - AUTHENTICATED ONLY
+-- Hanya user yang sudah login (Supabase Auth) yang dapat
+-- membaca/menulis data. Policy ini setara dengan yang dibuat
+-- migrasi: supabase/migrations/20260806_auth_rbac.sql
+-- Jalankan migrasi tersebut di Supabase SQL Editor untuk
+-- memindahkan user lama ke auth.users & membuat fungsi admin.
 -- ============================================================
 ALTER TABLE medicines ENABLE ROW LEVEL SECURITY;
 ALTER TABLE suppliers ENABLE ROW LEVEL SECURITY;
@@ -245,29 +238,77 @@ ALTER TABLE credit_payments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE stock_cards ENABLE ROW LEVEL SECURITY;
 ALTER TABLE stock_opnames ENABLE ROW LEVEL SECURITY;
 ALTER TABLE cash_journal ENABLE ROW LEVEL SECURITY;
-ALTER TABLE users ENABLE ROW LEVEL SECURITY;
-ALTER TABLE user_sessions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 
--- Policy sementara: allow all (untuk development)
--- Di production, ganti dengan policy yang lebih ketat
-CREATE POLICY "Allow all for development" ON medicines FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Allow all for development" ON suppliers FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Allow all for development" ON customers FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Allow all for development" ON doctors FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Allow all for development" ON purchase_orders FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Allow all for development" ON receiving_goods FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Allow all for development" ON return_purchases FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Allow all for development" ON supplier_debts FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Allow all for development" ON debt_payments FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Allow all for development" ON sales_transactions FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Allow all for development" ON sales_returns FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Allow all for development" ON customer_credits FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Allow all for development" ON credit_payments FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Allow all for development" ON stock_cards FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Allow all for development" ON stock_opnames FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Allow all for development" ON cash_journal FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Allow all for development" ON users FOR ALL USING (true) WITH CHECK (true);
-CREATE POLICY "Allow all for development" ON user_sessions FOR ALL USING (true) WITH CHECK (true);
+-- Policy authenticated-only di semua tabel data
+CREATE POLICY "auth_select" ON medicines FOR SELECT USING (auth.role() = 'authenticated');
+CREATE POLICY "auth_insert" ON medicines FOR INSERT WITH CHECK (auth.role() = 'authenticated');
+CREATE POLICY "auth_update" ON medicines FOR UPDATE USING (auth.role() = 'authenticated') WITH CHECK (auth.role() = 'authenticated');
+CREATE POLICY "auth_delete" ON medicines FOR DELETE USING (auth.role() = 'authenticated');
+CREATE POLICY "auth_select" ON suppliers FOR SELECT USING (auth.role() = 'authenticated');
+CREATE POLICY "auth_insert" ON suppliers FOR INSERT WITH CHECK (auth.role() = 'authenticated');
+CREATE POLICY "auth_update" ON suppliers FOR UPDATE USING (auth.role() = 'authenticated') WITH CHECK (auth.role() = 'authenticated');
+CREATE POLICY "auth_delete" ON suppliers FOR DELETE USING (auth.role() = 'authenticated');
+CREATE POLICY "auth_select" ON customers FOR SELECT USING (auth.role() = 'authenticated');
+CREATE POLICY "auth_insert" ON customers FOR INSERT WITH CHECK (auth.role() = 'authenticated');
+CREATE POLICY "auth_update" ON customers FOR UPDATE USING (auth.role() = 'authenticated') WITH CHECK (auth.role() = 'authenticated');
+CREATE POLICY "auth_delete" ON customers FOR DELETE USING (auth.role() = 'authenticated');
+CREATE POLICY "auth_select" ON doctors FOR SELECT USING (auth.role() = 'authenticated');
+CREATE POLICY "auth_insert" ON doctors FOR INSERT WITH CHECK (auth.role() = 'authenticated');
+CREATE POLICY "auth_update" ON doctors FOR UPDATE USING (auth.role() = 'authenticated') WITH CHECK (auth.role() = 'authenticated');
+CREATE POLICY "auth_delete" ON doctors FOR DELETE USING (auth.role() = 'authenticated');
+CREATE POLICY "auth_select" ON purchase_orders FOR SELECT USING (auth.role() = 'authenticated');
+CREATE POLICY "auth_insert" ON purchase_orders FOR INSERT WITH CHECK (auth.role() = 'authenticated');
+CREATE POLICY "auth_update" ON purchase_orders FOR UPDATE USING (auth.role() = 'authenticated') WITH CHECK (auth.role() = 'authenticated');
+CREATE POLICY "auth_delete" ON purchase_orders FOR DELETE USING (auth.role() = 'authenticated');
+CREATE POLICY "auth_select" ON receiving_goods FOR SELECT USING (auth.role() = 'authenticated');
+CREATE POLICY "auth_insert" ON receiving_goods FOR INSERT WITH CHECK (auth.role() = 'authenticated');
+CREATE POLICY "auth_update" ON receiving_goods FOR UPDATE USING (auth.role() = 'authenticated') WITH CHECK (auth.role() = 'authenticated');
+CREATE POLICY "auth_delete" ON receiving_goods FOR DELETE USING (auth.role() = 'authenticated');
+CREATE POLICY "auth_select" ON return_purchases FOR SELECT USING (auth.role() = 'authenticated');
+CREATE POLICY "auth_insert" ON return_purchases FOR INSERT WITH CHECK (auth.role() = 'authenticated');
+CREATE POLICY "auth_update" ON return_purchases FOR UPDATE USING (auth.role() = 'authenticated') WITH CHECK (auth.role() = 'authenticated');
+CREATE POLICY "auth_delete" ON return_purchases FOR DELETE USING (auth.role() = 'authenticated');
+CREATE POLICY "auth_select" ON supplier_debts FOR SELECT USING (auth.role() = 'authenticated');
+CREATE POLICY "auth_insert" ON supplier_debts FOR INSERT WITH CHECK (auth.role() = 'authenticated');
+CREATE POLICY "auth_update" ON supplier_debts FOR UPDATE USING (auth.role() = 'authenticated') WITH CHECK (auth.role() = 'authenticated');
+CREATE POLICY "auth_delete" ON supplier_debts FOR DELETE USING (auth.role() = 'authenticated');
+CREATE POLICY "auth_select" ON debt_payments FOR SELECT USING (auth.role() = 'authenticated');
+CREATE POLICY "auth_insert" ON debt_payments FOR INSERT WITH CHECK (auth.role() = 'authenticated');
+CREATE POLICY "auth_update" ON debt_payments FOR UPDATE USING (auth.role() = 'authenticated') WITH CHECK (auth.role() = 'authenticated');
+CREATE POLICY "auth_delete" ON debt_payments FOR DELETE USING (auth.role() = 'authenticated');
+CREATE POLICY "auth_select" ON sales_transactions FOR SELECT USING (auth.role() = 'authenticated');
+CREATE POLICY "auth_insert" ON sales_transactions FOR INSERT WITH CHECK (auth.role() = 'authenticated');
+CREATE POLICY "auth_update" ON sales_transactions FOR UPDATE USING (auth.role() = 'authenticated') WITH CHECK (auth.role() = 'authenticated');
+CREATE POLICY "auth_delete" ON sales_transactions FOR DELETE USING (auth.role() = 'authenticated');
+CREATE POLICY "auth_select" ON sales_returns FOR SELECT USING (auth.role() = 'authenticated');
+CREATE POLICY "auth_insert" ON sales_returns FOR INSERT WITH CHECK (auth.role() = 'authenticated');
+CREATE POLICY "auth_update" ON sales_returns FOR UPDATE USING (auth.role() = 'authenticated') WITH CHECK (auth.role() = 'authenticated');
+CREATE POLICY "auth_delete" ON sales_returns FOR DELETE USING (auth.role() = 'authenticated');
+CREATE POLICY "auth_select" ON customer_credits FOR SELECT USING (auth.role() = 'authenticated');
+CREATE POLICY "auth_insert" ON customer_credits FOR INSERT WITH CHECK (auth.role() = 'authenticated');
+CREATE POLICY "auth_update" ON customer_credits FOR UPDATE USING (auth.role() = 'authenticated') WITH CHECK (auth.role() = 'authenticated');
+CREATE POLICY "auth_delete" ON customer_credits FOR DELETE USING (auth.role() = 'authenticated');
+CREATE POLICY "auth_select" ON credit_payments FOR SELECT USING (auth.role() = 'authenticated');
+CREATE POLICY "auth_insert" ON credit_payments FOR INSERT WITH CHECK (auth.role() = 'authenticated');
+CREATE POLICY "auth_update" ON credit_payments FOR UPDATE USING (auth.role() = 'authenticated') WITH CHECK (auth.role() = 'authenticated');
+CREATE POLICY "auth_delete" ON credit_payments FOR DELETE USING (auth.role() = 'authenticated');
+CREATE POLICY "auth_select" ON stock_cards FOR SELECT USING (auth.role() = 'authenticated');
+CREATE POLICY "auth_insert" ON stock_cards FOR INSERT WITH CHECK (auth.role() = 'authenticated');
+CREATE POLICY "auth_update" ON stock_cards FOR UPDATE USING (auth.role() = 'authenticated') WITH CHECK (auth.role() = 'authenticated');
+CREATE POLICY "auth_delete" ON stock_cards FOR DELETE USING (auth.role() = 'authenticated');
+CREATE POLICY "auth_select" ON stock_opnames FOR SELECT USING (auth.role() = 'authenticated');
+CREATE POLICY "auth_insert" ON stock_opnames FOR INSERT WITH CHECK (auth.role() = 'authenticated');
+CREATE POLICY "auth_update" ON stock_opnames FOR UPDATE USING (auth.role() = 'authenticated') WITH CHECK (auth.role() = 'authenticated');
+CREATE POLICY "auth_delete" ON stock_opnames FOR DELETE USING (auth.role() = 'authenticated');
+CREATE POLICY "auth_select" ON cash_journal FOR SELECT USING (auth.role() = 'authenticated');
+CREATE POLICY "auth_insert" ON cash_journal FOR INSERT WITH CHECK (auth.role() = 'authenticated');
+CREATE POLICY "auth_update" ON cash_journal FOR UPDATE USING (auth.role() = 'authenticated') WITH CHECK (auth.role() = 'authenticated');
+CREATE POLICY "auth_delete" ON cash_journal FOR DELETE USING (auth.role() = 'authenticated');
+
+-- Policy khusus tabel profiles: semua user login boleh membaca,
+-- penulisan hanya lewat fungsi admin (security definer).
+CREATE POLICY "profiles_read" ON profiles FOR SELECT USING (auth.role() = 'authenticated');
 
 -- ============================================================
 -- MIGRASI PERBAIKAN (aman dijalankan berulang kali)

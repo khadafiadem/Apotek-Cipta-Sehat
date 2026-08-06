@@ -9,5 +9,12 @@ if (!supabaseUrl || !supabaseKey) {
 
 export const supabase = createClient(
   supabaseUrl || 'http://localhost:54321',
-  supabaseKey || 'dummy'
+  supabaseKey || 'dummy',
+  {
+    auth: {
+      // Sesi TIDAK dipulihkan otomatis: setiap buka halaman/link wajib login.
+      // Token tetap di-refresh selama halaman masih terbuka (autoRefresh default ON).
+      persistSession: false,
+    },
+  }
 );

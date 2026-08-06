@@ -330,11 +330,12 @@ export const PharmacyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const currentUserName = loggedInUser?.name || (currentRole === 'kasir' ? 'Kasir Utama' : 'Super Admin');
 
-  // Load data from Supabase on mount
+  // Load data dari Supabase saat mount dan setiap kali pengguna login/logout
+  // (RLS authenticated-only: data hanya bisa diambil setelah login).
   useEffect(() => {
     const loadData = async () => {
       try {
-        // Load session role from Supabase
+        // Load session role dari Supabase Auth
         try {
           const session = await sessionService.getActiveSession();
           if (session) {
@@ -400,11 +401,11 @@ export const PharmacyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     };
 
     loadData();
-  }, []);
+  }, [loggedInUser?.id]);
 
   const setRole = (role: UserRole) => {
+    // Role melekat pada akun login (Supabase Auth), tidak disimpan terpisah.
     setRoleState(role);
-    sessionService.updateSessionRole(role).catch(e => console.error('Failed to update session role:', e));
   };
 
   // MEDICINES CRUD
