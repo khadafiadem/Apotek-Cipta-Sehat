@@ -12,9 +12,8 @@ export const supabase = createClient(
   supabaseKey || 'dummy',
   {
     auth: {
-      // Sesi TIDAK dipulihkan otomatis: setiap buka halaman/link wajib login.
-      // Token tetap di-refresh selama halaman masih terbuka (autoRefresh default ON).
-      persistSession: false,
+      // Sesi dipulihkan otomatis dari localStorage sehingga tidak login ulang saat refresh.
+      persistSession: true,
     },
   }
 );
