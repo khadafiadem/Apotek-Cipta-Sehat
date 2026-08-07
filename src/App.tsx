@@ -74,9 +74,28 @@ function MainAppShell() {
   };
 
   // States for logged in user session
-  // Sesi TIDAK dipulihkan otomatis: setiap buka halaman/link harus login dulu
+  // Sesi dipulihkan otomatis dari Supabase: saat di-refresh tidak kembali ke login,
+  // tapi saat pertama kali aplikasi dibuka (belum ada sesi) tetap diarahkan ke login
   const [loggedInUser, setLoggedInUser] = useState<User | null>(null);
-  const [sessionLoaded, setSessionLoaded] = useState(true);
+  const [sessionLoaded, setSessionLoaded] = useState(false);
+
+  // Pulihkan sesi aktif saat halaman dimuat / di-refresh
+  useEffect(() => {
+    let cancelled = false;
+    sessionService.getActiveSession()
+      .then((session) => {
+        if (cancelled || !session) return;
+        setLoggedInUser(session.user);
+        setRole(session.role);
+      })
+      .catch((e) => console.error('Failed to restore session:', e))
+      .finally(() => {
+        if (!cancelled) setSessionLoaded(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [setRole]);
 
   // Sync context role and user with active logged-in user
   useEffect(() => {

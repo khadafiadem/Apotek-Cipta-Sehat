@@ -8,3 +8,4 @@ coverage/
 !.env.example
 backup-restore/
 supabase/.temp/
+.vercel
