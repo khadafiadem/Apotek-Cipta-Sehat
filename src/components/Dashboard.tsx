@@ -18,6 +18,7 @@ import {
   Pill,
   Database
 } from 'lucide-react';
+import DownloadPriceListButton from './DownloadPriceListButton';
 
 interface DashboardProps {
   setActiveTab: (tab: string) => void;
@@ -149,9 +150,12 @@ export default function Dashboard({ setActiveTab, setSelectedSupplierIdForPO, se
             Ringkasan harian performa penjualan, pengadaan stok, dan keuangan apotek.
           </p>
         </div>
-        <div className="flex items-center gap-2 text-xs text-slate-500 font-mono bg-white px-4 py-2 rounded-xl border border-slate-100 shadow-xs w-fit self-start md:self-auto">
-          <Calendar className="w-3.5 h-3.5 text-slate-400" />
-          <span>Sesi: {currentRole.toUpperCase()} | {jakartaTime || 'Memuat...'}</span>
+        <div className="flex flex-wrap items-center gap-2 self-start md:self-auto">
+          <DownloadPriceListButton />
+          <div className="flex items-center gap-2 text-xs text-slate-500 font-mono bg-white px-4 py-2 rounded-xl border border-slate-100 shadow-xs">
+            <Calendar className="w-3.5 h-3.5 text-slate-400" />
+            <span>Sesi: {currentRole.toUpperCase()} | {jakartaTime || 'Memuat...'}</span>
+          </div>
         </div>
       </div>
 

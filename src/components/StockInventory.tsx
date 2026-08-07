@@ -20,6 +20,7 @@ import {
   Search,
   User
 } from 'lucide-react';
+import DownloadPriceListButton from './DownloadPriceListButton';
 
 export default function StockInventory() {
   const {
@@ -121,7 +122,8 @@ export default function StockInventory() {
             Audit mutasi stok real-time, monitoring obat kadaluwarsa/kosong harian, dan pencatatan stock opname fisik apotek.
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
+          <DownloadPriceListButton />
           <div className="bg-emerald-50 border border-emerald-200/80 rounded-2xl px-4 py-2 flex items-center gap-2 text-xs font-bold text-emerald-800">
             <Archive className="w-4 h-4 text-emerald-600" />
             <span>Total Obat: {medicines.length} Jenis ({medicines.reduce((sum, m) => sum + m.stok, 0).toLocaleString('id-ID')} Pcs)</span>

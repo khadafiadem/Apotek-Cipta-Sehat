@@ -16,6 +16,7 @@ import LaporanMenu from './components/LaporanMenu';
 import PembatalanTransaksi from './components/PembatalanTransaksi';
 import UserManagement from './components/UserManagement';
 import Login from './components/Login';
+import PriceListAuto from './components/PriceListAuto';
 import { User } from './types';
 import { sessionService } from './services';
 
@@ -229,6 +230,8 @@ function MainAppShell() {
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row font-sans text-slate-900 antialiased" id="pharmacy-app-shell">
+      {/* Auto download daftar harga saat jadwal (08:00 & 21:00 WIB, kecuali Minggu/hari libur) */}
+      <PriceListAuto />
       {/* 1. SIDEBAR FOR DESKTOP */}
       <aside className="hidden md:flex flex-col w-64 bg-slate-900 text-slate-300 border-r border-slate-800 shrink-0">
         {/* Logo and Brand */}

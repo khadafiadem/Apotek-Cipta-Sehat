@@ -24,6 +24,7 @@ import {
   Package
 } from 'lucide-react';
 import BatchImportModal from './BatchImportModal';
+import DownloadPriceListButton from './DownloadPriceListButton';
 
 export default function MasterData() {
   const {
@@ -221,8 +222,10 @@ export default function MasterData() {
             Kelola data inti apotek termasuk daftar obat-obatan, supplier pengadaan, pelanggan terdaftar, dan dokter rujukan.
           </p>
         </div>
-        {!isReadOnly && (
-          <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <DownloadPriceListButton />
+          {!isReadOnly && (
+            <div className="flex flex-wrap items-center gap-2">
             {activeSubTab === 'obat' && (
               <>
                 {medicines.length > 0 && (
@@ -276,6 +279,7 @@ export default function MasterData() {
             </button>
           </div>
         )}
+        </div>
       </div>
 
       {/* Sub Tab Navigation */}
